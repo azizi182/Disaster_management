@@ -1,0 +1,121 @@
+body {
+    margin: 0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: linear-gradient(135deg, #5f81f1 0%, #c7d2fe 100%);
+}
+
+.dashboard {
+    display: flex;
+     background-color: linear-gradient(135deg, #5f81f1 0%, #c7d2fe 100%);
+}
+
+/* Sidebar / Drawer */
+.sidebar {
+    width: 220px;
+    background-color:  #06b6d4 ;
+    color: #fff;
+    height: 100vh;
+    padding: 20px;
+}
+
+.sidebar h2 {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.sidebar ul {
+    list-style: none;
+    padding: 0;
+}
+
+.sidebar ul li {
+    margin: 15px 0;
+}
+
+.sidebar ul li a {
+    color: #fff;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    border-radius: 5px;
+    transition: background 0.3s;
+}
+
+.sidebar ul li a:hover {
+    background-color: #2023b1;
+}
+
+/* Main content */
+.main {
+    flex: 1;
+    padding: 20px;
+}
+
+/* Header */
+.header {
+    background-color: #ffffff;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+/* Dashboard cards */
+.content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.card {
+    background-color: #ffffff;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+button {
+    margin-top: 10px;
+    padding: 10px 15px;
+    background-color: #1e40af;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+button:hover {
+    background-color: #0ea5e9;
+}
+
+/* Map placeholder */
+.map-placeholder {
+    background-color: #e0e0e0;
+    height: 200px;
+    border-radius: 5px;
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #555;
+    font-weight: bold;
+}
+
+/* SOS card */
+.sos-card {
+    background-color: #dc2626;
+    color: #fff;
+}
+
+.sos-button {
+    background-color: #fff;
+    color: #dc2626;
+}
+
+.sos-button:hover {
+    background-color: #fca5a5;
+}
