@@ -4,7 +4,7 @@
 -->
 
 <?php
-
+session_start();
 $error = "";
 
 if (isset($_POST['login'])) {
@@ -35,8 +35,8 @@ if (isset($_POST['login'])) {
     <nav>
         <a href="dashboard/villager_dashboard.php">Villagers</a>
         <a href="dashboard/ketuakampung_dashboard.php">Ketua Kampung</a>
-        <a href="#">Penghulu</a>
-        <a href="#">Pejabat Daerah</a>
+        <a href="dashboard/penghulu_dashboard.php">Penghulu</a>
+        <a href="dashboard/pejabatdaerah_dashboard.php">Pejabat Daerah</a>
         <a href="#">KPLB HQ</a>
     </nav>
 </header>

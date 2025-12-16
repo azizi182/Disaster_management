@@ -22,11 +22,11 @@ $_SESSION['villager_name'] = 'Ahmad'; // Mock villager name
             <h2>Village </h2>
             <ul>
                 <li><a href="#"><i class="fa fa-home"></i> Home</a></li>
-                <li><a href="#"><i class="fa fa-flag"></i> Submit Report</a></li>
-                <li><a href="#"><i class="fa fa-bell"></i> Alerts</a></li>
-                <li><a href="#"><i class="fa fa-map-marker-alt"></i> Map</a></li>
-                <li><a href="#"><i class="fa fa-siren-on"></i> SOS</a></li>
-                <li><a href="#"><i class="fa fa-cog"></i> Settings</a></li>
+                <li><a href="#"><i class="fa fa-flag"></i> Submit Report,Emergency / Complaint</a></li>
+                <li><a href="#"><i class="fa fa-bell"></i> Alerts & Notifications</a></li>
+                
+                <li><a href="#"><i class="fa-solid fa-triangle-exclamation"></i> SOS</a></li>
+                <li><a href="#"><i class="fa-solid fa-map-location-dot"></i> Incident Map</a></li>
                 <li><a href="../logout.php"><i class="fa fa-sign-out-alt"></i> Logout</a></li>
             </ul>
         </div>

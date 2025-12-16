@@ -1,38 +1,96 @@
 <?php
 session_start();
-if (isset($_SESSION['user_id'])) {
-    header('Location: dashboard.php');
-    exit;
-}
+
+// Mock District Officer
+$_SESSION['district_name'] = 'Pejabat Daerah Kubang Pasu';
 ?>
-<!doctype html>
+
+<!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>DVMD - Login</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>body{display:flex;align-items:center;justify-content:center;height:100vh;background:#f5f7fb}</style>
+  <meta charset="UTF-8">
+  <title>Pejabat Daerah Dashboard - DVMD</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="stylesheet" href="../css/style_villager_dashboard.css">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
+
 <body>
-  <div class="card p-4" style="width:360px">
-    <h4 class="mb-3">DVMD Login</h4>
-    <form method="post" action="auth.php">
-      <div class="mb-2">
-        <label class="form-label">Email</label>
-        <input name="email" type="email" class="form-control" required>
+  <div class="dashboard">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <h2>Pejabat Daerah</h2>
+      <ul>
+        <li><a href="#"><i class="fa fa-home"></i> Home</a></li>
+        <li><a href="#"><i class="fa-solid fa-city"></i> Monitor All Villages</a></li>
+        <li><a href="#"><i class="fa-solid fa-hand-holding-heart"></i> Aid Distribution Management</a></li>
+        <li><a href="#"><i class="fa-solid fa-bell"></i> Disaster Commands</a></li>
+        <li><a href="#"><i class="fa-solid fa-file-lines"></i> Reports from Penghulu </a></li>
+        <li><a href="#"><i class="fa-solid fa-map-location-dot"></i> Incident Map</a></li>
+
+        <li><a href="../logout.php"><i class="fa-solid fa-right-from-bracket"></i> Logout</a></li>
+      </ul>
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+
+      <!-- Header -->
+      <div class="header">
+        <h1><?php echo $_SESSION['district_name']; ?></h1>
+        <p>Digital Village Management Dashboard (DVMD)</p>
       </div>
-      <div class="mb-3">
-        <label class="form-label">Password</label>
-        <input name="password" type="password" class="form-control" required>
-      </div>
-      <div class="d-grid mb-2">
-        <button class="btn btn-primary" type="submit">Sign in</button>
-      </div>
-      <div class="d-grid">
-        <a class="btn btn-outline-secondary" href="register.php">Register (Villager)</a>
-      </div>
-    </form>
+
+      <!-- Content -->
+      <section class="content">
+
+        <!-- Full village access -->
+        <div class="card">
+          <h3>Access and monitor All Villages</h3>
+          <p>View and manage report for all villages in the district.</p>
+          <button>View Villages</button>
+        </div>
+
+        <!-- Aid distribution -->
+        <div class="card">
+          <h3>Aid Distribution Management</h3>
+          <p>Initiate and track aid distribution to affected areas.</p>
+          <button>Manage Aid</button>
+        </div>
+
+
+        <!-- Reports from Penghulu -->
+        <div class="card">
+          <h3> Reports from Penghulu</h3>
+          <p>communicate with penghulu and Review reports received from Penghulu.</p>
+          <button>View Reports</button>
+        </div>
+
+        <!-- Emergency commands -->
+        <div class="card critical">
+          <h3> Disaster Commands</h3>
+          <p>Issue district-level emergency commands , Send notifications to all villages and officials.</p>
+          <button class="danger-btn">Issue Command</button>
+        </div>
+
+
+        <!-- Map -->
+        <div class="card">
+          <h3>Incident Map</h3>
+          <p>Track emergencies using GPS/maps.</p>
+          <div class="map-placeholder">
+            Google Maps API (Coming Soon)
+          </div>
+        </div>
+
+      </section>
+    </main>
   </div>
 </body>
+
 </html>

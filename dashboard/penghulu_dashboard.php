@@ -1,38 +1,86 @@
 <?php
 session_start();
-if (isset($_SESSION['user_id'])) {
-    header('Location: dashboard.php');
-    exit;
-}
+
+// Mock Penghulu data
+$_SESSION['penghulu_name'] = 'Dato’ Penghulu Rahman';
 ?>
-<!doctype html>
+
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>DVMD - Login</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>body{display:flex;align-items:center;justify-content:center;height:100vh;background:#f5f7fb}</style>
+    <meta charset="UTF-8">
+    <title>Penghulu Dashboard - DVMD</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="../css/style_villager_dashboard.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
+    <link rel="stylesheet"
+     href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
+
 <body>
-  <div class="card p-4" style="width:360px">
-    <h4 class="mb-3">DVMD Login</h4>
-    <form method="post" action="auth.php">
-      <div class="mb-2">
-        <label class="form-label">Email</label>
-        <input name="email" type="email" class="form-control" required>
-      </div>
-      <div class="mb-3">
-        <label class="form-label">Password</label>
-        <input name="password" type="password" class="form-control" required>
-      </div>
-      <div class="d-grid mb-2">
-        <button class="btn btn-primary" type="submit">Sign in</button>
-      </div>
-      <div class="d-grid">
-        <a class="btn btn-outline-secondary" href="register.php">Register (Villager)</a>
-      </div>
-    </form>
-  </div>
+<div class="dashboard">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <h2>Penghulu</h2>
+        <ul>
+            <li><a href="#"><i class="fa fa-home"></i> Home</a></li>
+            <li><a href="#"><i class="fa-solid fa-city"></i> Monitor All Villages - Review Issues - Notify Ketua Kampung</a></li>
+            <li><a href="#"><i class="fa-solid fa-file-lines"></i> Reports from Ketua Kampung</a></li>
+            <li><a href="#"><i class="fa fa-comments"></i> Communicate with Pejabat Daerah</a></li>
+            <li><a href="#"><i class="fa-solid fa-map-location-dot"></i> Incident Map</a></li>
+            
+            <li><a href="../logout.php"><i class="fa-solid fa-right-from-bracket"></i> Logout</a></li>
+        </ul>
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+
+        <!-- Header -->
+        <div class="header">
+            <h1>Welcome, <?php echo $_SESSION['penghulu_name']; ?></h1>
+            <p>Digital Village Management Dashboard (DVMD)</p>
+        </div>
+
+        <!-- Content -->
+        <section class="content">
+
+
+            <!-- Monitor villages -->
+            <div class="card">
+                <h3>Monitor Village Status</h3>
+                <p>Track safety, emergencies, and village conditions, .</p>
+                <button>Monitor</button>
+            </div>
+
+            <!-- Review issues -->
+            <div class="card">
+                <h3>Reports from Ketua Kampung</h3>
+                <p>Review Reported Issues, Analyze incidents escalated by Ketua Kampung , Send directives or alerts to  Ketua Kampung..</p>
+                <button>Review Issues</button>
+            </div>
+
+            <!-- Report to Pejabat Daerah -->
+            <div class="card critical">
+                <h3>Report to Pejabat Daerah</h3>
+                <p>Escalate critical issues for district action.</p>
+                <button class="danger-btn">Submit Report</button>
+            </div>
+
+            <!-- Map placeholder -->
+            <div class="card">
+                <h3>Incident Location Map</h3>
+                <p>Verify incident locations using GPS/maps.</p>
+                <div class="map-placeholder">
+                    Google Maps API (Coming Soon)
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+</div>
 </body>
 </html>

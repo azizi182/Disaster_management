@@ -10,7 +10,7 @@ $_SESSION['ketua_name'] = 'Encik Ahmad'; // Mock name
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ketua Kampung Dashboard</title>
 
-    <link rel="stylesheet" href="css/style_villager_dashboard.css">
+    <link rel="stylesheet" href="../css/style_villager_dashboard.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -21,12 +21,10 @@ $_SESSION['ketua_name'] = 'Encik Ahmad'; // Mock name
             <h2>Ketua Kampung</h2>
             <ul>
                 <li><a href="#"><i class="fa fa-home"></i> Home</a></li>
-                <li><a href="#"><i class="fa fa-flag"></i> Village Reports</a></li>
-                <li><a href="#"><i class="fa fa-edit"></i> Respond Reports</a></li>
-                <li><a href="#"><i class="fa fa-calendar-plus"></i> Create Event</a></li>
-                <li><a href="#"><i class="fa fa-bell"></i> Trigger Notification</a></li>
-                <li><a href="#"><i class="fa fa-comments"></i> Communicate</a></li>
-                <li><a href="#"><i class="fa fa-map-marker-alt"></i> Incident Map</a></li>
+                <li><a href="#"><i class="fa fa-edit"></i> Monitor Village Reports - Notify Village</a></li>
+                <li><a href="#"><i class="fa fa-calendar-plus"></i> Create Community Event and Information</a></li>
+                <li><a href="#"><i class="fa fa-comments"></i> Communicate with Penghulu</a></li>
+                <li><a href="#"><i class="fa-solid fa-map-location-dot"></i> Incident Map</a></li>
                 <li><a href="../logout.php"><i class="fa fa-sign-out-alt"></i> Logout</a></li>
             </ul>
         </div>
@@ -43,30 +41,19 @@ $_SESSION['ketua_name'] = 'Encik Ahmad'; // Mock name
                 <!-- Village Reports -->
                 <div class="card">
                     <h3>Monitor Village Reports</h3>
-                    <p>View local reports submitted by villagers.</p>
+                    <p>View local reports submitted by villagers and update status and classify villager reports.</p>
+                    <p>Send directives or alerts to villager</p>
                     <button>View Reports</button>
                 </div>
 
-                <!-- Respond to Reports -->
-                <div class="card">
-                    <h3>Respond to Reports</h3>
-                    <p>Update status and classify villager reports.</p>
-                    <button>Respond</button>
-                </div>
 
                 <!-- Create Community Event -->
                 <div class="card">
-                    <h3>Create Community Event</h3>
+                    <h3>Create Community Event and Information</h3>
                     <p>Publish event to villagers' dashboards.</p>
                     <button>Create Event</button>
                 </div>
 
-                <!-- Trigger Notification -->
-                <div class="card">
-                    <h3>Trigger Village Notification</h3>
-                    <p>Send alerts or instructions to villagers.</p>
-                    <button>Send Notification</button>
-                </div>
 
                 <!-- Communicate with Penghulu -->
                 <div class="card">
