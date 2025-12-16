@@ -5,6 +5,7 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
+$user_id = $_SESSION['user_id'];
 $username = $_SESSION['user_name'];
 $role = $_SESSION['user_role'];
 ?>
@@ -16,7 +17,7 @@ $role = $_SESSION['user_role'];
     <title>Penghulu Dashboard - DVMD</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <link rel="stylesheet" href="../css/style_villager_dashboard.css">
+    <link rel="stylesheet" href="../../css/style_villager_dashboard.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
     <link rel="stylesheet"
      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -35,7 +36,7 @@ $role = $_SESSION['user_role'];
             <li><a href="#"><i class="fa fa-comments"></i> Communicate with Pejabat Daerah</a></li>
             <li><a href="#"><i class="fa-solid fa-map-location-dot"></i> Incident Map</a></li>
             
-            <li><a href="../logout.php"><i class="fa-solid fa-right-from-bracket"></i> Logout</a></li>
+            <li><a href="../../logout.php"><i class="fa-solid fa-right-from-bracket"></i> Logout</a></li>
         </ul>
     </aside>
 
@@ -44,7 +45,7 @@ $role = $_SESSION['user_role'];
 
         <!-- Header -->
         <div class="header">
-            <h1>Welcome, <?php echo $_SESSION['penghulu_name']; ?></h1>
+            <h1>Welcome,<?php echo $username, $user_id, $role; ?></h1>
             <p>Digital Village Management Dashboard (DVMD)</p>
         </div>
 

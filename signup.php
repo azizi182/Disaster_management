@@ -20,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['signup'])) {
         $message = "Passwords do not match";
     } else {
 
-        // Check email exists (Prepared Statement)
+        // Check email exists (Prepared Statement) - more secure
         $stmt = $conn->prepare("SELECT user_email FROM tbl_users WHERE user_email = ?");
         $stmt->bind_param("s", $email);
         $stmt->execute();
