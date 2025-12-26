@@ -72,7 +72,7 @@ function renderTable($result)
 
 <head>
     <meta charset="UTF-8">
-    <title>Announcement List</title>
+    <title>Announcement List - villager</title>
 
     <link rel="stylesheet" href="../../css/style_villager_dashboard.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
@@ -215,13 +215,6 @@ function renderTable($result)
             </div>
 
         </div>
-
-
-
-
-
-
-
 
     </div>
 
