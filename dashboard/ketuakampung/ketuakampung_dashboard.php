@@ -182,6 +182,18 @@ $pinreports_json = json_encode($allPins);
         cursor: pointer;
 
     }
+
+    #penghuluForm {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        justify-content: center;
+        align-items: center;
+    }
 </style>
 
 <body>
@@ -192,8 +204,8 @@ $pinreports_json = json_encode($allPins);
             <ul>
                 <li><a href="#"><i class="fa fa-home"></i> Home</a></li>
                 <li><a href="ketua_report_list.php"><i class="fa fa-edit"></i> Monitor Village Reports - Notify Village</a></li>
-                <li><a href="#"><i class="fa fa-calendar-plus"></i> Announcement for villagers</a></li>
-                <li><a href="#"><i class="fa fa-comments"></i> Communicate with Penghulu</a></li>
+                <li><a href="ketua_annoucment_list.php"><i class="fa fa-calendar-plus"></i> Announcement for villagers</a></li>
+                <li><a href="#"><i class="fa fa-comments"></i> Report to Penghulu</a></li>
                 <li>
                     <a href="javascript:void(0)" onclick="openFullMap()">
                         <i class="fa-solid fa-map-location-dot"></i> Incident Map
@@ -241,7 +253,7 @@ $pinreports_json = json_encode($allPins);
                 <div class="card">
                     <h3>Report to Penghulu</h3>
                     <p>submit report to Penghulu.</p>
-                    <button class="btn" onclick="openPenghuluForm()">Open Chat</button>
+                    <button class="btn" onclick="openPenghuluForm()">Submit Report</button>
                 </div>
 
                 <!-- Map / Incident Location -->
@@ -296,8 +308,8 @@ $pinreports_json = json_encode($allPins);
 
         </div>
 
-        <div id="penghuluForm" style="display:none;" class="notificationformketua">
-            <form method="POST">
+        <div id="penghuluForm" >
+            <form method="POST", action="" class="notificationformketua">
                 <h2>Report to Penghulu</h2>
 
                 <label>Report Title</label>
@@ -365,7 +377,7 @@ $pinreports_json = json_encode($allPins);
 
 
     function openPenghuluForm() {
-        document.getElementById("penghuluForm").style.display = "block";
+        document.getElementById("penghuluForm").style.display = "flex";
     }
 
     function closePenghuluForm() {

@@ -7,55 +7,27 @@ if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'penghulu') {
     exit();
 }
 
-$villager_id = $_SESSION['user_id'];
+$penghulu_id = $_SESSION['user_id'];
 $username = $_SESSION['user_name'];
 
-// Fetch reports for this villager ONLY
+// 
 $sql = "
     SELECT 
         r.*,
         k.user_name AS ketua_name
     FROM ketua_report r
     JOIN tbl_users k ON r.ketua_id = k.user_id
-    ORDER BY r.created_at DESC
+    WHERE r.penghulu_id = '$penghulu_id'
+    ORDER BY 
+        CASE r.report_status
+            WHEN 'Pending' THEN 1
+            ELSE 2
+        END,
+        r.created_at ASC
 ";
 
-
 $result = mysqli_query($conn, $sql);
-// Handle Approve, Reject, Delete actions
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $kt_report_id = $_POST['kt_kt_report_id'];
 
-    // Approve
-    if (isset($_POST['approve'])) {
-        $message = mysqli_real_escape_string($conn, $_POST['approve_msg'] ?? '');
-        mysqli_query($conn, "UPDATE ketua_report SET report_status='Approved' WHERE kt_report_id='$kt_report_id'");
-
-        // Optional: Insert message to Ketua
-        if (!empty($message)) {
-            $report = mysqli_fetch_assoc(mysqli_query($conn, "SELECT ketua_id FROM ketua_report WHERE kt_report_id='$kt_report_id'"));
-            $ketua_id = $report['ketua_id'];
-            mysqli_query($conn, "INSERT INTO report_messages (kt_report_id, sender_role, receiver_id, message, created_at)
-                                VALUES ('$kt_report_id', 'penghulu', '$ketua_id', '$message', NOW())");
-        }
-        header("Location: penghulu_ketua_report_list.php");
-        exit();
-    }
-
-    // Reject
-    if (isset($_POST['reject'])) {
-        mysqli_query($conn, "UPDATE ketua_report SET report_status='Rejected' WHERE kt_report_id='$kt_report_id'");
-        header("Location: penghulu_ketua_report_list.php");
-        exit();
-    }
-
-    // Delete
-    if (isset($_POST['delete'])) {
-        mysqli_query($conn, "DELETE FROM ketua_report WHERE kt_report_id='$kt_report_id'");
-        header("Location: penghulu_ketua_report_list.php");
-        exit();
-    }
-}
 
 ?>
 
@@ -92,6 +64,89 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         th {
             background: #1e40af;
+            color: white;
+        }
+
+        .status-pending {
+            color: orange;
+            font-weight: bold;
+        }
+
+        .status-approved {
+            color: green;
+            font-weight: bold;
+        }
+
+        .status-rejected {
+            color: red;
+            font-weight: bold;
+        }
+
+        .back-btn {
+            display: inline-block;
+            margin-bottom: 15px;
+            text-decoration: none;
+            color: #1e40af;
+            font-weight: bold;
+        }
+
+        /* reportformpenghulu */
+        #reportform {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .reportformpenghulu {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            width: 400px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .reportformpenghulu h2 {
+            text-align: center;
+            margin: 0 auto;
+        }
+
+        .reportformpenghulu label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .reportformpenghulu input,
+        .reportformpenghulu select,
+        .reportformpenghulu textarea {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+
+        }
+
+        .reportformpenghulu .btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            background-color: #9ca3af !important;
+            /* grey */
+            color: #ffffff;
+            cursor: not-allowed;
+            opacity: 0.7;
         }
     </style>
 </head>
@@ -105,7 +160,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <li><a href="penghulu_dashboard.php"><i class="fa fa-home"></i> Home</a></li>
                 <li><a href="penghulu_report_list.php"><i class="fa-solid fa-city"></i> Monitor All Villages - Review Issues - Notify Ketua Kampung</a></li>
                 <li><a href="#"><i class="fa-solid fa-file-lines"></i> Reports from Ketua Kampung</a></li>
-                <li><a href="#"><i class="fa fa-comments"></i> Communicate with Pejabat Daerah</a></li>
+                <li><a href="#"><i class="fa fa-comments"></i> Report to Pejabat Daerah</a></li>
+                <li>
+                    <a href="javascript:void(0)" onclick="openFullMap()">
+                        <i class="fa-solid fa-map-location-dot"></i> Incident Map
+                    </a>
+                </li>
                 <li><a href="../../logout.php"><i class="fa-solid fa-right-from-bracket"></i> Logout</a></li>
             </ul>
         </div>
@@ -130,45 +190,136 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <th>Action</th>
                     </tr>
 
-                    <?php $i = 1;
-                    while ($row = mysqli_fetch_assoc($result)): ?>
+
+                    <?php if (mysqli_num_rows($result) > 0): ?>
+                        <?php $i = 1;
+                        while ($row = mysqli_fetch_assoc($result)): ?>
+                            <tr>
+                                <td><?= $i++ ?></td>
+                                <td><?= htmlspecialchars($row['ketua_name']) ?></td>
+                                <td><?= htmlspecialchars($row['report_title']) ?></td>
+                                <td><?= htmlspecialchars($row['report_desc']) ?></td>
+                                <td><?= htmlspecialchars($row['report_location']) ?></td>
+                                <td class="status-<?= strtolower($row['report_status']) ?>">
+                                    <?= htmlspecialchars($row['report_status']) ?>
+                                </td>
+                                <td><?= htmlspecialchars($row['created_at']) ?></td>
+                                <td>
+                                    <?php if ($row['report_status'] === 'Pending'): ?>
+                                        <button class="btn btn-success"
+                                            onclick="openForm(
+                                            <?= $row['kt_report_id'] ?>,
+                                            '<?= htmlspecialchars(addslashes($row['report_title'])) ?>',
+                                            '<?= htmlspecialchars(addslashes($row['ketua_name'])) ?>'
+                                        )">
+                                            Approve
+                                        </button>
+
+                                        <button class="btn btn-danger"
+                                            onclick="rejectReport(<?= $row['kt_report_id'] ?>)">
+                                            Reject
+                                        </button>
+
+                                        <button class="btn btn-warning"
+                                            onclick="deleteReport(<?= $row['kt_report_id'] ?>)">
+                                            Delete
+                                        </button>
+
+                                    <?php else: ?>
+                                        <button class="btn" disabled>Approve</button>
+                                        <button class="btn" disabled>Reject</button>
+                                        <button class="btn" disabled>Delete</button>
+                                    <?php endif; ?>
+                                </td>
+
+                            </tr>
+                        <?php endwhile; ?>
+                    <?php else: ?>
                         <tr>
-                            <td><?= $i++ ?></td>
-                            <td><?= htmlspecialchars($row['ketua_name']) ?></td>
-                            <td><?= htmlspecialchars($row['report_title']) ?></td>
-                            <td><?= htmlspecialchars($row['report_desc']) ?></td>
-                            <td><?= htmlspecialchars($row['report_location']) ?></td>
-                            <td><?= htmlspecialchars($row['report_status']) ?></td>
-                            <td><?= htmlspecialchars($row['created_at']) ?></td>
-                            <td>
-                                <!-- Approve -->
-                                <form action="" method="POST" style="display:inline;">
-                                    <input type="hidden" name="kt_report_id" value="<?= $row['kt_report_id'] ?>">
-                                    <input type="text" name="approve_msg" placeholder="Message to Ketua" style="width:150px;">
-                                    <button type="submit" name="approve" style="background:green;color:white;">Approve</button>
-                                </form>
-
-                                <!-- Reject -->
-                                <form action="" method="POST" style="display:inline;">
-                                    <input type="hidden" name="kt_report_id" value="<?= $row['kt_report_id'] ?>">
-                                    <button type="submit" name="reject" style="background:orange;color:white;">Reject</button>
-                                </form>
-
-                                <!-- Delete -->
-                                <form action="" method="POST" style="display:inline;">
-                                    <input type="hidden" name="kt_report_id" value="<?= $row['kt_report_id'] ?>">
-                                    <button type="submit" name="delete" style="background:red;color:white;">Delete</button>
-                                </form>
-                            </td>
-
+                            <td colspan="6" style="text-align:center;">No reports submitted yet</td>
                         </tr>
-                    <?php endwhile; ?>
+                    <?php endif; ?>
                 </table>
             </div>
+        </div>
+        <?php if (isset($_GET['rejected'])): ?>
+            <script>
+                alert("Rejected successfully!");
+            </script>
+        <?php endif; ?>
+        <?php if (isset($_GET['approved'])): ?>
+            <script>
+                alert("Approved successfully!");
+            </script>
+        <?php endif; ?>
+        <?php if (isset($_GET['delete'])): ?>
+            <script>
+                alert("Deleted successfully!");
+            </script>
+        <?php endif; ?>
+
+
+        <!-- reportform -->
+        <div id="reportform">
+            <form method="POST" action="penghulu_approve_report.php" class="reportformpenghulu">
+
+                <div class="form-card">
+                    <span class="close" onclick="closeForm()">&times;</span>
+                    <h2>Submit Feedback</h2>
+
+                    <input type="hidden" name="kt_report_id" id="kt_report_id">
+                    <input type="hidden" name="report_status" value="Approved">
+
+                    <label>Report Title</label>
+                    <input type="text" id="report_title" readonly>
+
+                    <label>Report by</label>
+                    <input type="text" id="ketua_name" readonly>
+
+                    <label>Feedback</label>
+                    <textarea type="text" name="feedback" rows="4" required></textarea>
+
+
+                    <button class="btn" name="submitreport">Submit Feedback</button>
+                </div>
+            </form>
+
+            <?php if (isset($_GET['success'])): ?>
+                <script>
+                    alert("Report submitted successfully!");
+                </script>
+            <?php endif; ?>
 
         </div>
     </div>
 
 </body>
+
+<script>
+    var reportform = document.getElementById("reportform");
+
+    function openForm(reportId, title, ketua) {
+        reportform.style.display = "flex";
+        document.getElementById("kt_report_id").value = reportId;
+        document.getElementById("report_title").value = title;
+        document.getElementById("ketua_name").value = ketua
+    }
+
+    function closeForm() {
+        reportform.style.display = "none";
+    }
+
+    function deleteReport(reportId) {
+        if (confirm("Are you sure you want to delete this report?")) {
+            window.location.href = "penghulu_delete_report.php?kt_report_id=" + reportId;
+        }
+    }
+
+    function rejectReport(reportId) {
+        if (confirm("Are you sure you want to reject this report?")) {
+            window.location.href = "penghulu_reject_report.php?kt_report_id=" + reportId;
+        }
+    }
+</script>
 
 </html>

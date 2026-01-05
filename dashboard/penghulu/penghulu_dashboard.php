@@ -68,7 +68,7 @@ $pinreports_json = json_encode($allPins);
                 <li><a href="#"><i class="fa fa-home"></i> Home</a></li>
                 <li><a href="penghulu_report_list.php"><i class="fa-solid fa-city"></i> Monitor All Villages - Review Issues - Notify Ketua Kampung</a></li>
                 <li><a href="penghulu_ketua_report_list.php"><i class="fa-solid fa-file-lines"></i> Reports from Ketua Kampung</a></li>
-                <li><a href="#"><i class="fa fa-comments"></i> Communicate with Pejabat Daerah</a></li>
+                <li><a href="#"><i class="fa fa-comments"></i> Report to Pejabat Daerah</a></li>
                 <li>
                     <a href="javascript:void(0)" onclick="openFullMap()">
                         <i class="fa-solid fa-map-location-dot"></i> Incident Map
@@ -84,7 +84,7 @@ $pinreports_json = json_encode($allPins);
 
             <!-- Header -->
             <div class="header">
-                <h1>Welcome,<?php echo $username, $user_id, $role; ?></h1>
+                <h1>Welcome,<?php echo $username, $user_id; ?></h1>
                 <p>Digital Village Management Dashboard (DVMD)</p>
             </div>
 

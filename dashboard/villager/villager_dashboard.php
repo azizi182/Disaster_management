@@ -125,6 +125,7 @@ $pinreports_json = json_encode($allPins);
             background: rgba(0, 0, 0, 0.5);
             justify-content: center;
             align-items: center;
+            
         }
 
         .reportformvillager {
@@ -188,6 +189,7 @@ $pinreports_json = json_encode($allPins);
             background: rgba(0, 0, 0, 0.5);
             justify-content: center;
             align-items: center;
+            
         }
 
         .modal-content {
@@ -198,6 +200,9 @@ $pinreports_json = json_encode($allPins);
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             position: relative;
         }
+
+        
+        
     </style>
 </head>
 
@@ -246,12 +251,6 @@ $pinreports_json = json_encode($allPins);
                     <a href="villager_announce_list.php"><button>View Alerts</button></a>
                 </div>
 
-                <!-- Map placeholder -->
-                <div class="card">
-                    <h3>Incident Map</h3>
-                    <p>View location of incidents on the map.</p>
-                    <div id="incident-map" class="map-placeholder" onclick="openFullMap()"></div>
-                </div>
 
                 <!-- SOS / Quick Emergency -->
                 <div class="card sos-card">
@@ -259,6 +258,14 @@ $pinreports_json = json_encode($allPins);
                     <p>Send a quick SOS alert to authorities.</p>
                     <button class="sos-button" onclick="openSOSForm()">Send SOS</button>
                 </div>
+
+                <!-- Map placeholder -->
+                <div class="card">
+                    <h3>Incident Map</h3>
+                    <p>View location of incidents on the map.</p>
+                    <div id="incident-map" class="map-placeholder" onclick="openFullMap()"></div>
+                </div>
+                
             </div>
         </div>
 
@@ -364,7 +371,7 @@ $pinreports_json = json_encode($allPins);
     </div>
 
     <!-- Map Modal -->
-    <div id="mapModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:999;">
+    <div id="mapModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:9999;">
         <div style="background:#fff; width:90%; max-width:600px; height:400px; margin:50px auto; padding:10px;">
             <h3>Click on map to select location</h3>
             <div id="map" style="height:300px;"></div>
@@ -375,7 +382,7 @@ $pinreports_json = json_encode($allPins);
     <!-- Fullscreen Map Modal -->
     <div id="fullMapModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:9999;">
         <div style="position:relative; width:100%; height:100%;">
-            <span style="position:absolute; top:10px; right:20px; font-size:30px; color:white; cursor:pointer; z-index:1000;" onclick="closeFullMap()">&times;</span>
+            <span style="position:absolute; top:10px; right:20px; font-size:30px; color:white; cursor:pointer; z-index:9000;" onclick="closeFullMap()">&times;</span>
             <div id="fullIncidentMap" style="width:100%; height:100%;"></div>
         </div>
     </div>

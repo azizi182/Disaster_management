@@ -112,6 +112,15 @@ $sosList = mysqli_fetch_all($resultsos, MYSQLI_ASSOC);
             font-weight: bold;
         }
 
+        button:disabled {
+            background-color: #9ca3af !important;
+            /* grey */
+            color: #ffffff;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+
         /* reportformketua */
         #reportform {
             display: none;
@@ -193,13 +202,14 @@ $sosList = mysqli_fetch_all($resultsos, MYSQLI_ASSOC);
         }
 
         #sosMap {
-    height: 400px;          /* fixed height */
-    width: 100%;
-    border-radius: 10px;
-    margin-bottom: 25px;   /* GAP between map & table */
-    border: 2px solid #e5e7eb;
-}
-
+            height: 400px;
+            /* fixed height */
+            width: 100%;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            /* GAP between map & table */
+            border: 2px solid #e5e7eb;
+        }
     </style>
 </head>
 
@@ -229,7 +239,7 @@ $sosList = mysqli_fetch_all($resultsos, MYSQLI_ASSOC);
 
             <div class="table-soscontainer">
                 <h2 style="color:white;">🚨 SOS Incident Map</h2>
-                <div id="sosMap" ></div>
+                <div id="sosMap"></div>
 
                 <table>
                     <tr>
@@ -270,7 +280,7 @@ $sosList = mysqli_fetch_all($resultsos, MYSQLI_ASSOC);
 
                 <table>
                     <tr>
-                        <th>Id</th>
+                        <th>No</th>
                         <th>Title</th>
                         <th>Type</th>
                         <th>Description</th>
@@ -370,40 +380,41 @@ $sosList = mysqli_fetch_all($resultsos, MYSQLI_ASSOC);
 
     </div>
 
-<!-- sos map script -->
+    <!-- sos map script -->
     <script>
-    var redIcon = L.icon({
-        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
-        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-        iconSize: [25, 41],
-        iconAnchor: [12, 41],
-        popupAnchor: [1, -34]
-    });
+        var redIcon = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+            shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34]
+        });
 
-    const sosData = <?= json_encode($sosList); ?>;
+        const sosData = <?= json_encode($sosList); ?>;
 
-    let sosMap = L.map('sosMap').setView([6.43782726, 100.19387055], 15);
+        let sosMap = L.map('sosMap').setView([6.43782726, 100.19387055], 15);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap'
-    }).addTo(sosMap);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(sosMap);
 
-    sosData.forEach(sos => {
-        if (!sos.latitude || !sos.longitude) return;
+        sosData.forEach(sos => {
+            if (!sos.latitude || !sos.longitude) return;
 
-        L.marker(
-            [parseFloat(sos.latitude), parseFloat(sos.longitude)],
-            { icon: redIcon }   // ✅ THIS LINE IS THE KEY
-        )
-        .addTo(sosMap)
-        .bindPopup(`
+            L.marker(
+                    [parseFloat(sos.latitude), parseFloat(sos.longitude)], {
+                        icon: redIcon
+                    } // ✅ THIS LINE IS THE KEY
+                )
+                .addTo(sosMap)
+                .bindPopup(`
             <b>🚨 SOS Alert</b><br>
             <b>Villager:</b> ${sos.villager_name}<br>
             <b>Message:</b> ${sos.sos_msg ?? 'N/A'}<br>
             <b>Time:</b> ${sos.created_at}
         `);
-    });
-</script>
+        });
+    </script>
 
 
 

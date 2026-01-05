@@ -98,8 +98,12 @@ $result = mysqli_query($conn, $sql);
                 <li><a href="penghulu_dashboard.php"><i class="fa fa-home"></i> Home</a></li>
             <li><a href=""><i class="fa-solid fa-city"></i> Monitor All Villages - Review Issues - Notify Ketua Kampung</a></li>
             <li><a href="penghulu_ketua_report_list.php"><i class="fa-solid fa-file-lines"></i> Reports from Ketua Kampung</a></li>
-            <li><a href="#"><i class="fa fa-comments"></i> Communicate with Pejabat Daerah</a></li>
-            <li><a href="#"><i class="fa-solid fa-map-location-dot"></i> Incident Map</a></li>
+            <li><a href="#"><i class="fa fa-comments"></i> Report to Pejabat Daerah</a></li>
+            <li>
+                    <a href="javascript:void(0)" onclick="openFullMap()">
+                        <i class="fa-solid fa-map-location-dot"></i> Incident Map
+                    </a>
+                </li>
             
             <li><a href="../../logout.php"><i class="fa-solid fa-right-from-bracket"></i> Logout</a></li>
             </ul>
@@ -135,8 +139,9 @@ $result = mysqli_query($conn, $sql);
                         while ($row = mysqli_fetch_assoc($result)): ?>
                             <tr>
                                 <td><?= $i++ ?></td>
-                                <td><?= htmlspecialchars($row['report_title']) ?></td>
                                 <td><?= htmlspecialchars($row['villager_name']) ?></td>
+                                <td><?= htmlspecialchars($row['report_title']) ?></td>
+                                
                                 <td><?= htmlspecialchars($row['report_type']) ?></td>
                                 <td><?= htmlspecialchars($row['report_desc']) ?></td>
                                 <td><?= htmlspecialchars($row['report_date']) ?></td>
