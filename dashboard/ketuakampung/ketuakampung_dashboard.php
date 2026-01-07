@@ -1,6 +1,18 @@
 <?php
 session_start();
 include '../../dbconnect.php';
+$message = "";
+$status = "";
+
+// This ensures the modal pops up after a successful submission and page reload
+if (isset($_GET['success']) && $_GET['success'] == 1) {
+    $status = "success";
+    $message = "Announcement published successfully!";
+}
+if (isset($_GET['success_reportpenghulu']) && $_GET['success_reportpenghulu'] == 1) {
+    $status = "success";
+    $message = "Report submitted to Penghulu successfully!";
+}
 
 //Only 'ketuakampung' role allowed
 if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'ketuakampung') {
@@ -10,15 +22,37 @@ if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'ketuakampung') {
 // Get ketua info
 $username = $_SESSION['user_name'];
 $role = $_SESSION['user_role'];
+$ketua_id = $_SESSION['user_id'];
+
+
+//Get id kampung
+$kampung_id = '';
+$kampung_name = '';
+
+$stmt = $conn->prepare("SELECT kampung_id FROM tbl_users WHERE user_id = ?");
+$stmt->bind_param("i", $ketua_id);
+$stmt->execute();
+$stmt->bind_result($kampung_id);
+$stmt->fetch();
+$stmt->close();
+
+if (!empty($kampung_id)) {
+    $stmt = $conn->prepare("SELECT kampung_name FROM tbl_kampung WHERE kampung_id = ?");
+    $stmt->bind_param("i", $kampung_id);
+    $stmt->execute();
+    $stmt->bind_result($kampung_name);
+    $stmt->fetch();
+    $stmt->close();
+}
 
 // Fetch count of pending reports
-$ketua_id = $_SESSION['user_id'];
 $sql = "SELECT COUNT(*) AS pending_count FROM villager_report
         WHERE ketua_id = '$ketua_id' AND report_status = 'Pending'";
 $result = mysqli_query($conn, $sql);
 $row = mysqli_fetch_assoc($result);
 $pending_count = $row['pending_count'];
 
+//1. Announcement publishing
 if (isset($_POST['submitinformation'])) {
 
     // Handle announcement publishing here
@@ -28,21 +62,48 @@ if (isset($_POST['submitinformation'])) {
     $date = $_POST['announcement_date'];
     $location = $_POST['announcement_location'];
 
-    // Insert into database (example table: announcements)
-    $sqlinsertannouncement = "INSERT INTO `ketua_announce`( `ketua_id`, `announce_title`, `announce_type`, `announce_desc`, `announce_date`, `announce_location`) 
-    VALUES ('$ketua_id','$title','$type','$description','$date', '$location');";
+    // --- VALIDATION ---
+    $pattern = "/^[a-zA-Z0-9 ,.-]{3,100}$/";
 
-    if (mysqli_query($conn, $sqlinsertannouncement)) {
-        header("Location: ketuakampung_dashboard.php?success=1");
-        exit();
-    } else {
-        echo "<script>alert('Error publishing announcement: " . mysqli_error($conn) . "');</script>";
+    // Check specific inputs
+    $inputs = [
+        'Title' => $title,
+        'Location' => $location
+    ];
+
+    $validation_error = false;
+    foreach ($inputs as $name => $value) {
+        if (!preg_match($pattern, $value)) {
+            $status = "error";
+            $message = "$name format is invalid. Only letters, numbers, spaces, commas, dots, and dashes allowed.";
+            $validation_error = true;
+            break;
+        }
+    }
+
+    // Only proceed to DB if validation passed & Insert into database (example table: announcements)
+    if (!$validation_error) {
+        $sqlinsertannouncement = "INSERT INTO `ketua_announce`( `ketua_id`,`kampung_id`, `announce_title`, `announce_type`, `announce_desc`, `announce_date`, `announce_location`) 
+    VALUES ('$ketua_id','$kampung_id','$title','$type','$description','$date', '$location');";
+
+
+        if (mysqli_query($conn, $sqlinsertannouncement)) {
+            // Success: Redirect to clear POST data and show success message
+            header("Location: ketuakampung_dashboard.php?success=1");
+            exit();
+        } else {
+            // DB Error
+            $status = "error";
+            $message = "Error publishing announcement: " . mysqli_error($conn);
+        }
     }
 }
+// Fetch Penghulu list for reporting
 $sqlPenghulu = "SELECT user_id, user_name FROM tbl_users WHERE user_role = 'penghulu'";
 $resultPenghulu = mysqli_query($conn, $sqlPenghulu);
 
 
+//2. Report to Penghulu
 if (isset($_POST['submit_to_penghulu'])) {
 
     $title = $_POST['kp_title'];
@@ -50,16 +111,30 @@ if (isset($_POST['submit_to_penghulu'])) {
     $location = $_POST['kp_location'];
     $penghulu_id = $_POST['penghulu_id'];
 
-    $sql = "INSERT INTO `ketua_report`(`ketua_id`, `penghulu_id`, `report_title`, `report_desc`, `report_location`, `report_status`) 
-    VALUES ('$ketua_id','$penghulu_id','$title','$desc','$location','Pending')";
+    // --- VALIDATION ---
+    $pattern = "/^[a-zA-Z0-9 ,.-]{3,100}$/";
 
-    if (mysqli_query($conn, $sql)) {
-        header("Location: ketuakampung_dashboard.php?success_reportpenghulu=1");
-        exit();
-    } else {
-        echo "<script>alert('Error submitting report to penghulu: " . mysqli_error($conn) . "');</script>";
+    $inputs = [
+        'Title' => $title,
+        'Location' => $location
+    ];
+
+    if (!$validation_error) {
+        $sql = "INSERT INTO `ketua_report`(`ketua_id`, `penghulu_id`, `report_title`, `report_desc`, `report_location`, `report_status`) 
+        VALUES ('$ketua_id','$penghulu_id','$title','$desc','$location','Pending')";
+
+        if (mysqli_query($conn, $sql)) {
+            // Success: Redirect to clear POST data and show success message
+            header("Location: ketuakampung_dashboard.php?success_reportpenghulu=1");
+            exit();
+        } else {
+            // DB Error
+            $status = "error";
+            $message = "Error submitting report: " . mysqli_error($conn);
+        }
     }
 }
+
 
 //map 
 // Villager reports
@@ -90,8 +165,6 @@ while ($row = mysqli_fetch_assoc($sos_result)) {
 // Combine
 $allPins = array_merge($reports, $sos);
 $pinreports_json = json_encode($allPins);
-
-
 ?>
 
 <!DOCTYPE html>
@@ -194,6 +267,73 @@ $pinreports_json = json_encode($allPins);
         justify-content: center;
         align-items: center;
     }
+
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+    }
+
+    .modal-box {
+        background: #fff;
+        padding: 25px 30px;
+        border-radius: 10px;
+        text-align: center;
+        width: 320px;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+        animation: popIn 0.3s ease;
+    }
+
+    .modal-box.success {
+        border-top: 6px solid #28a745;
+    }
+
+    .modal-box.error {
+        border-top: 6px solid #dc3545;
+    }
+
+    .modal-icon {
+        font-size: 45px;
+        margin-bottom: 10px;
+    }
+
+    .modal-box.success .modal-icon {
+        color: #28a745;
+    }
+
+    .modal-box.error .modal-icon {
+        color: #dc3545;
+    }
+
+    .modal-box p {
+        font-size: 16px;
+        margin-bottom: 20px;
+    }
+
+    .modal-box button {
+        padding: 8px 25px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        background: #333;
+        color: white;
+    }
+
+    @keyframes popIn {
+        from {
+            transform: scale(0.8);
+            opacity: 0;
+        }
+
+        to {
+            transform: scale(1);
+            opacity: 1;
+        }
+    }
 </style>
 
 <body>
@@ -202,10 +342,10 @@ $pinreports_json = json_encode($allPins);
         <div class="sidebar">
             <h2>Ketua Kampung</h2>
             <ul>
-                <li><a href="#"><i class="fa fa-home"></i> Home</a></li>
+                <li><a href="ketuakampung_dashboard.php"><i class="fa fa-home"></i> Home</a></li>
                 <li><a href="ketua_report_list.php"><i class="fa fa-edit"></i> Monitor Village Reports - Notify Village</a></li>
                 <li><a href="ketua_annoucment_list.php"><i class="fa fa-calendar-plus"></i> Announcement for villagers</a></li>
-                <li><a href="#"><i class="fa fa-comments"></i> Report to Penghulu</a></li>
+
                 <li>
                     <a href="javascript:void(0)" onclick="openFullMap()">
                         <i class="fa-solid fa-map-location-dot"></i> Incident Map
@@ -219,7 +359,7 @@ $pinreports_json = json_encode($allPins);
         <div class="main">
             <!-- Header -->
             <div class="header">
-                <h1>Welcome, <?php echo $username;  ?> !</h1>
+                <h1>Welcome, <?php echo $username;  ?> ! from <?php echo htmlspecialchars($kampung_id); ?> <?php echo htmlspecialchars($kampung_name); ?></h1>
             </div>
 
             <!-- Dashboard content -->
@@ -293,23 +433,22 @@ $pinreports_json = json_encode($allPins);
 
                     <label>Location</label>
                     <input type="text" name="announcement_location" placeholder="GPS / Address">
+                    <label>Kampung </label>
+                    <input type="text" name="announcement_kampung" value="<?php echo $kampung_name; ?>" readonly>
 
-
+                    <label>Map </label>
+                    <button type="button" onclick="openMapPicker('report')">📍 Pick Location on Map</button>
 
                     <button class="btn" name="submitinformation">Confirm Publish</button>
                 </div>
             </form>
 
-            <?php if (isset($_GET['success'])): ?>
-                <script>
-                    alert("Information published successfully!");
-                </script>
-            <?php endif; ?>
+            
 
         </div>
 
-        <div id="penghuluForm" >
-            <form method="POST", action="" class="notificationformketua">
+        <div id="penghuluForm">
+            <form method="POST" , action="" class="notificationformketua">
                 <h2>Report to Penghulu</h2>
 
                 <label>Report Title</label>
@@ -320,6 +459,7 @@ $pinreports_json = json_encode($allPins);
 
                 <label>Location</label>
                 <input type="text" name="kp_location" required>
+
 
                 <label>Penghulu</label>
                 <select name="penghulu_id" required>
@@ -334,12 +474,6 @@ $pinreports_json = json_encode($allPins);
                 <button class="btn" name="submit_to_penghulu">Submit</button>
                 <button type="button" class="btn" onclick="closePenghuluForm()">Cancel</button>
             </form>
-
-            <?php if (isset($_GET['success_reportpenghulu'])): ?>
-                <script>
-                    alert("report to penghulu successfully!");
-                </script>
-            <?php endif; ?>
 
         </div>
 
@@ -362,6 +496,29 @@ $pinreports_json = json_encode($allPins);
             <div id="fullIncidentMap" style="width:100%; height:100%;"></div>
         </div>
     </div>
+    <?php if (!empty($message)): ?>
+            <div class="modal-overlay">
+                <div class="modal-box <?= $status === 'success' ? 'success' : 'error' ?>">
+                    <div class="modal-icon">
+                        <?= $status === 'success' ? '✔' : '❌' ?>
+                    </div>
+                    <p><?= htmlspecialchars($message) ?></p>
+                    <button onclick="closeModal()">OK</button>
+                </div>
+            </div>
+            
+            <?php if ($status === 'success'): ?>
+            <script>
+                // Optional: Remove the 'success' query param from URL without refreshing so the modal doesn't show again on manual refresh
+                if (window.history.replaceState) {
+                    const url = new URL(window.location);
+                    url.searchParams.delete('success');
+                    url.searchParams.delete('success_reportpenghulu');
+                    window.history.replaceState(null, '', url);
+                }
+            </script>
+            <?php endif; ?>
+    <?php endif; ?>
 </body>
 
 <script>

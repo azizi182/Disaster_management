@@ -14,11 +14,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
   if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
     $status = "error";
     $message = "Invalid email format";
-  }else if (empty($email) || empty($password)) {
+  } else if (empty($email) || empty($password)) {
     $status = "error";
     $message = "Please fill in all fields";
-  }
-   else {
+  } else {
 
     // Prepared statement (SQL Injection safe)
     $stmt = $conn->prepare(

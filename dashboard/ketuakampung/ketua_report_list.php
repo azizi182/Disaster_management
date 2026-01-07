@@ -10,9 +10,27 @@ if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'ketuakampung') {
 $ketua_id = $_SESSION['user_id'];
 $username = $_SESSION['user_name'];
 
+//Get id kampung
+$kampung_id = '';
+$kampung_name = '';
+
+$stmt = $conn->prepare("SELECT kampung_id FROM tbl_users WHERE user_id = ?");
+$stmt->bind_param("i", $ketua_id);
+$stmt->execute();
+$stmt->bind_result($kampung_id);
+$stmt->fetch();
+$stmt->close();
+
+if (!empty($kampung_id)) {
+    $stmt = $conn->prepare("SELECT kampung_name FROM tbl_kampung WHERE kampung_id = ?");
+    $stmt->bind_param("i", $kampung_id);
+    $stmt->execute();
+    $stmt->bind_result($kampung_name);
+    $stmt->fetch();
+    $stmt->close();
+}
+
 // Fetch reports for this villager ONLY
-
-
 $sql = "
     SELECT
         rpt.*,
@@ -222,10 +240,14 @@ $sosList = mysqli_fetch_all($resultsos, MYSQLI_ASSOC);
             <h2>Ketua Kampung - <?php echo $username; ?></h2>
             <ul>
                 <li><a href="ketuakampung_dashboard.php"><i class="fa fa-home"></i> Home</a></li>
-                <li><a href="#"><i class="fa fa-edit"></i> Monitor Village Reports - Notify Village</a></li>
-                <li><a href="#"><i class="fa fa-calendar-plus"></i> Announcement for villagers</a></li>
-                <li><a href="#"><i class="fa fa-comments"></i> Communicate with Penghulu</a></li>
-                <li><a href="#"><i class="fa-solid fa-map-location-dot"></i> Incident Map</a></li>
+                <li><a href="ketua_report_list.php"><i class="fa fa-edit"></i> Monitor Village Reports - Notify Village</a></li>
+                <li><a href="ketua_annoucment_list.php"><i class="fa fa-calendar-plus"></i> Announcement for villagers</a></li>
+                
+                <li>
+                    <a href="javascript:void(0)" onclick="openFullMap()">
+                        <i class="fa-solid fa-map-location-dot"></i> Incident Map
+                    </a>
+                </li>
                 <li><a href="../../logout.php"><i class="fa fa-sign-out-alt"></i> Logout</a></li>
             </ul>
         </div>
@@ -234,7 +256,7 @@ $sosList = mysqli_fetch_all($resultsos, MYSQLI_ASSOC);
         <div class="main">
             <div class="header">
                 <h1>My Reports</h1>
-                <p>Logged in as: <?= htmlspecialchars($username) ?></p>
+                <p>Logged in as: <?= htmlspecialchars($username) ?> from <?= htmlspecialchars($kampung_name) ?></p>
             </div>
 
             <div class="table-soscontainer">
@@ -286,6 +308,7 @@ $sosList = mysqli_fetch_all($resultsos, MYSQLI_ASSOC);
                         <th>Description</th>
                         <th>Date</th>
                         <th>Location</th>
+                        <th>View Map</th>
                         <th>Penduduk</th>
                         <th>Status</th>
                         <th>Action</th>
@@ -301,7 +324,15 @@ $sosList = mysqli_fetch_all($resultsos, MYSQLI_ASSOC);
                                 <td><?= htmlspecialchars($row['report_desc']) ?></td>
                                 <td><?= htmlspecialchars($row['report_date']) ?></td>
                                 <td><?= htmlspecialchars($row['report_location']) ?></td>
-                                <td><?= htmlspecialchars($row['villager_name']) ?></td>
+                                <td>
+                                    <button onclick="viewMap(
+                                            '<?= $row['latitude'] ?>', 
+                                            '<?= $row['longitude'] ?>'
+                                            )">
+                                        📍 View Map
+                                    </button>
+                                </td>
+                                <td><?= htmlspecialchars($row['villager_name'])  ?></td>
                                 <td class="status-<?= strtolower($row['report_status']) ?>">
                                     <?= htmlspecialchars($row['report_status']) ?>
                                 </td>
@@ -380,6 +411,15 @@ $sosList = mysqli_fetch_all($resultsos, MYSQLI_ASSOC);
 
     </div>
 
+    <!-- map script -->
+    <div id="mapModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:999; justify-content:center; align-items:center;">
+        <div style="background:#fff; width:90%; max-width:600px; padding:10px; border-radius:8px;">
+            <h3>Incident Location</h3>
+            <div id="viewMap" style="height:350px;"></div>
+            <button onclick="closeMap()">Close</button>
+        </div>
+    </div>
+
     <!-- sos map script -->
     <script>
         var redIcon = L.icon({
@@ -416,6 +456,13 @@ $sosList = mysqli_fetch_all($resultsos, MYSQLI_ASSOC);
         });
     </script>
 
+<!-- Fullscreen Map Modal -->
+    <div id="fullMapModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:9999;">
+        <div style="position:relative; width:100%; height:100%;">
+            <span style="position:absolute; top:10px; right:20px; font-size:30px; color:white; cursor:pointer; z-index:1000;" onclick="closeFullMap()">&times;</span>
+            <div id="fullIncidentMap" style="width:100%; height:100%;"></div>
+        </div>
+    </div>
 
 
 </body>
@@ -453,7 +500,9 @@ $sosList = mysqli_fetch_all($resultsos, MYSQLI_ASSOC);
         }
     }
 
-    //map
+    let viewMapObj;
+    let viewMarker;
+
     function viewMap(lat, lng) {
         document.getElementById("mapModal").style.display = "flex";
 
@@ -477,6 +526,59 @@ $sosList = mysqli_fetch_all($resultsos, MYSQLI_ASSOC);
 
     function closeMap() {
         document.getElementById("mapModal").style.display = "none";
+    }
+
+
+    //full map
+    function openFullMap() {
+        document.getElementById('fullMapModal').style.display = 'block';
+
+        setTimeout(() => {
+            // Remove previous map instance if exists
+            if (window.fullMap) {
+                window.fullMap.remove();
+            }
+
+            // Initialize full map
+            window.fullMap = L.map('fullIncidentMap').setView([6.4432, 100.2056], 13);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(window.fullMap);
+
+            // Add all pins
+            pins.forEach(function(pin) {
+                if (pin.latitude && pin.longitude) {
+                    let icon, popupContent;
+
+                    if (pin.type === 'report') {
+                        icon = greenIcon;
+                        popupContent = `<b>Report: ${pin.report_type}</b><br>
+                            Title: ${pin.report_title}<br>
+                            Status: ${pin.report_status}<br>
+                            Submitted by: ${pin.submitted_by}`;
+                    } else if (pin.type === 'sos') {
+                        icon = redIcon;
+                        popupContent = `<b>SOS Alert</b><br>
+                            Status: ${pin.sos_status}<br>
+                            Sent by: ${pin.sent_by}`;
+                    }
+
+                    L.marker([pin.latitude, pin.longitude], {
+                            icon: icon
+                        })
+                        .addTo(window.fullMap)
+                        .bindPopup(popupContent);
+                }
+            });
+
+        }, 200);
+    }
+
+    // Close full map modal
+    function closeFullMap() {
+        document.getElementById('fullMapModal').style.display = 'none';
+        if (window.fullMap) window.fullMap.remove();
     }
 </script>
 

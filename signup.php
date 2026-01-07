@@ -22,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['signup'])) {
         $status = "error";
         $message = "Invalid email format";
     } elseif (!preg_match("/^[a-zA-Z0-9_ ]{3,50}$/", $username)) { //return 0 is invalid
-        //username
+        //usernamem - path traversal,command injection, sql, XSS
         $status = "error";
         $message = "Invalid username";
     } elseif (strlen($password) < 4) {

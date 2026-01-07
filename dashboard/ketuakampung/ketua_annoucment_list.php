@@ -80,6 +80,9 @@ function renderTable($result)
     <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
     <style>
         .table-container {
             background: white;
@@ -173,10 +176,10 @@ function renderTable($result)
         <div class="sidebar">
             <h2>Ketua - <?php echo $username; ?></h2>
             <ul>
-                <li><a href="#"><i class="fa fa-home"></i> Home</a></li>
+                <li><a href="ketuakampung_dashboard.php"><i class="fa fa-home"></i> Home</a></li>
                 <li><a href="ketua_report_list.php"><i class="fa fa-edit"></i> Monitor Village Reports - Notify Village</a></li>
                 <li><a href="ketua_annoucment_list.php"><i class="fa fa-calendar-plus"></i> Announcement for villagers</a></li>
-                <li><a href="#"><i class="fa fa-comments"></i> Communicate with Penghulu</a></li>
+
                 <li>
                     <a href="javascript:void(0)" onclick="openFullMap()">
                         <i class="fa-solid fa-map-location-dot"></i> Incident Map
@@ -221,7 +224,68 @@ function renderTable($result)
 
     </div>
 
+    <!-- Fullscreen Map Modal -->
+    <div id="fullMapModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:9999;">
+        <div style="position:relative; width:100%; height:100%;">
+            <span style="position:absolute; top:10px; right:20px; font-size:30px; color:white; cursor:pointer; z-index:1000;" onclick="closeFullMap()">&times;</span>
+            <div id="fullIncidentMap" style="width:100%; height:100%;"></div>
+        </div>
+    </div>
+
 </body>
 
+<script>
+    //fullmap
+    function openFullMap() {
+        document.getElementById('fullMapModal').style.display = 'block';
+
+        setTimeout(() => {
+            // Remove previous map instance if exists
+            if (window.fullMap) {
+                window.fullMap.remove();
+            }
+
+            // Initialize full map
+            window.fullMap = L.map('fullIncidentMap').setView([6.4432, 100.2056], 13);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(window.fullMap);
+
+            // Add all pins
+            pins.forEach(function(pin) {
+                if (pin.latitude && pin.longitude) {
+                    let icon, popupContent;
+
+                    if (pin.type === 'report') {
+                        icon = greenIcon;
+                        popupContent = `<b>Report: ${pin.report_type}</b><br>
+                            Title: ${pin.report_title}<br>
+                            Status: ${pin.report_status}<br>
+                            Submitted by: ${pin.submitted_by}`;
+                    } else if (pin.type === 'sos') {
+                        icon = redIcon;
+                        popupContent = `<b>SOS Alert</b><br>
+                            Status: ${pin.sos_status}<br>
+                            Sent by: ${pin.sent_by}`;
+                    }
+
+                    L.marker([pin.latitude, pin.longitude], {
+                            icon: icon
+                        })
+                        .addTo(window.fullMap)
+                        .bindPopup(popupContent);
+                }
+            });
+
+        }, 200);
+    }
+
+    // Close full map modal
+    function closeFullMap() {
+        document.getElementById('fullMapModal').style.display = 'none';
+        if (window.fullMap) window.fullMap.remove();
+    }
+</script>
 
 </html>

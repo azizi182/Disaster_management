@@ -10,24 +10,48 @@ if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'villager') {
 $villager_id = $_SESSION['user_id'];
 $username = $_SESSION['user_name'];
 
-function getAnnouncements($conn, $type)
+$kampung_id = '';
+$kampung_name = '';
+
+$stmt = $conn->prepare("SELECT kampung_id FROM tbl_users WHERE user_id = ?");
+$stmt->bind_param("i", $villager_id);
+$stmt->execute();
+$stmt->bind_result($kampung_id);
+$stmt->fetch();
+$stmt->close();
+
+if (!empty($kampung_id)) {
+    $stmt = $conn->prepare("SELECT kampung_name FROM tbl_kampung WHERE kampung_id = ?");
+    $stmt->bind_param("i", $kampung_id);
+    $stmt->execute();
+    $stmt->bind_result($kampung_name);
+    $stmt->fetch();
+    $stmt->close();
+}
+
+function getAnnouncements($conn, $type, $kampung_id)
 {
     $sql = "
         SELECT 
-        a.*, 
-        u.user_name AS published_by
+            a.*, 
+            u.user_name AS published_by
         FROM ketua_announce a
         JOIN tbl_users u ON a.ketua_id = u.user_id
-        WHERE a.announce_type = '$type'
+        WHERE a.announce_type = ? AND a.kampung_id = ?
         ORDER BY a.announce_date ASC
     ";
-    return mysqli_query($conn, $sql);
+
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("si", $type, $kampung_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    return $result;
 }
 
-$alerts     = getAnnouncements($conn, 'alert');
-$events     = getAnnouncements($conn, 'event');
-$infos      = getAnnouncements($conn, 'info');
-$community  = getAnnouncements($conn, 'community');
+$alerts     = getAnnouncements($conn, 'alert', $kampung_id);
+$events     = getAnnouncements($conn, 'event', $kampung_id);
+$infos      = getAnnouncements($conn, 'info', $kampung_id);
+$community  = getAnnouncements($conn, 'community', $kampung_id);
 
 // Function to get header color based on announcement type
 function renderTable($result)
