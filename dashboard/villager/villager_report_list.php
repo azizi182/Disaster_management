@@ -100,7 +100,7 @@ $result = mysqli_query($conn, $sql);
                 <li><a href="villager_report_list.php"><i class="fa fa-flag"></i> Submit Report,Emergency / Complaint</a></li>
                 <li><a href="villager_announce_list.php"><i class="fa fa-bell"></i> Announcement / Alerts</a></li>
 
-                <li><a href="#"><i class="fa-solid fa-triangle-exclamation"></i> SOS</a></li>
+                
                 <li><a href="#"><i class="fa-solid fa-map-location-dot"></i> Incident Map</a></li>
                 <li><a href="../../logout.php"><i class="fa fa-sign-out-alt"></i> Logout</a></li>
             </ul>

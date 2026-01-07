@@ -1,6 +1,8 @@
 <?php
 session_start();
 include '../../dbconnect.php';
+$message = "";
+$status = "";
 
 if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'villager') {
     header('Location: ../login.php');
@@ -11,10 +13,36 @@ $villager_id = $_SESSION['user_id'];
 $username = $_SESSION['user_name'];
 $role = $_SESSION['user_role'];
 
-$sqlketua = "SELECT * FROM tbl_users WHERE user_role = 'ketuakampung' ";
-$resultketua = mysqli_query($conn, $sqlketua);
+//get kampung id 
+$kampung_id = '';
+$kampung_name = '';
 
-//insert report to database 
+$stmt = $conn->prepare("SELECT kampung_id FROM tbl_users WHERE user_id = ?");
+$stmt->bind_param("i", $villager_id);
+$stmt->execute();
+$stmt->bind_result($kampung_id);
+$stmt->fetch();
+$stmt->close();
+
+if (!empty($kampung_id)) {
+    $stmt = $conn->prepare("SELECT kampung_name FROM tbl_kampung WHERE kampung_id = ?");
+    $stmt->bind_param("i", $kampung_id);
+    $stmt->execute();
+    $stmt->bind_result($kampung_name);
+    $stmt->fetch();
+    $stmt->close();
+}
+
+// get ketua kampung refer on thier kampung
+$sqlketua = "SELECT user_id, user_name
+            FROM tbl_users
+            WHERE user_role = 'ketuakampung' AND kampung_id = ?";
+$stmt = $conn->prepare($sqlketua);
+$stmt->bind_param("i", $kampung_id);
+$stmt->execute();
+$resultketua = $stmt->get_result();
+
+//insert report to database  villager report
 if (isset($_POST['submitreport'])) {
 
     $title = $_POST['title'];
@@ -28,43 +56,101 @@ if (isset($_POST['submitreport'])) {
     $lat = $_POST['latitude'];
     $lng = $_POST['longitude'];
 
+
+    // error handling & Validate required fields
     if (!ctype_digit($phone)) {
-        header("Location: villager_dashboard.php?error=phone");
-        exit();
-    }
-    if (empty($lat) || empty($lng)) {
-        echo "<script>alert('Please select location on map');</script>";
-        exit();
-    }
 
+        $status = "error";
+        $message = "Phone number must be numeric and 10-12 digits long";
+    } else if (empty($lat) || empty($lng)) {
 
-    $sqlinsertreport = "INSERT INTO `villager_report`(`villager_id`, `ketua_id`,  `report_title`, `report_type`, `report_desc`, `report_phone`, 
-    `report_date`,  `report_location`, `latitude`, `longitude`, `report_status`) 
-            VALUES ('$villager_id','$ketua_id', '$title', '$report_type', '$description', '$phone', '$date', '$location', '$lat', '$lng', '$status')";
+        $status = "error";
+        $message = "Please select location on map";
+    } else if (empty($ketua_id)) {
 
-    if (mysqli_query($conn, $sqlinsertreport)) {
-        header("Location: villager_dashboard.php?success=1");
-        exit();
+        $status = "error";
+        $message = "Please select a Ketua Kampung";
+    } else if (empty($title) || empty($report_type) || empty($description) || empty($date)) {
+
+        $status = "error";
+        $message = "Please fill in all required fields";
+    } else if (!preg_match("/^[a-zA-Z0-9_ ]{3,50}$/", $title)) {
+        $status = "error";
+        $message = "Invalid title";
+    } else if (!preg_match("/^[a-zA-Z0-9_ ]{3,50}$/", $description)) {
+        $status = "error";
+        $message = "Invalid description";
+    } else if (!preg_match("/^[a-zA-Z0-9_ ]{3,50}$/", $location)) {
+        $status = "error";
+        $message = "Invalid location";
     } else {
-        echo "<script>alert('Error submitting report: " . mysqli_error($conn) . "');</script>";
+
+
+        $stmt = $conn->prepare("
+        INSERT INTO villager_report
+        (villager_id, ketua_id, report_title, report_type, report_desc, report_phone, 
+        report_date, report_location, latitude, longitude, report_status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ");
+
+        $stmt->bind_param(
+            "iissssssdds",
+            $villager_id,
+            $ketua_id,
+            $title,
+            $report_type,
+            $description,
+            $phone,
+            $date,
+            $location,
+            $lat,
+            $lng,
+            $status
+        );
+
+        if ($stmt->execute()) {
+            $status = "success";
+            $message = "Report submitted successfully!";
+        } else {
+            echo "<script>alert('Error submitting report: " . htmlspecialchars($stmt->error) . "');</script>";
+        }
+
+        $stmt->close();
     }
 }
 
+
+//sos form
 if (isset($_POST['sosconfirm'])) {
     $lat = $_POST['sos_latitude'];
     $lng = $_POST['sos_longitude'];
-    // Insert SOS logic here
     $sos_status = 'Sent';
-    $sos_sql = "INSERT INTO `sos_villager`( `villager_id`, `ketua_id`, `latitude`, `longitude`, `sos_status`) 
-    VALUES ('$villager_id',' ',$lat,$lng,'$sos_status');";
 
-    if (mysqli_query($conn, $sos_sql)) {
-        header("Location: villager_dashboard.php?success_sos=1");
-        exit();
+    if (empty($lat) || empty($lng)) {
+
+        $status = "error";
+        $message = "Please select location on map";
     } else {
-        echo "<script>alert('Error sending SOS: " . mysqli_error($conn) . "');</script>";
+
+        $stmt = $conn->prepare("
+        INSERT INTO sos_villager (villager_id, ketua_id, latitude, longitude, sos_status)
+        VALUES (?, ?, ?, ?, ?)
+    ");
+
+        $empty_ketua = NULL; // if you don’t have ketua selected
+        $stmt->bind_param("iidds", $villager_id, $empty_ketua, $lat, $lng, $sos_status);
+
+        if ($stmt->execute()) {
+            $status = "success";
+            $message = "Sos submitted successfully!";
+        } else {
+            echo "<script>alert('Error sending SOS: " . htmlspecialchars($stmt->error) . "');</script>";
+        }
+
+        $stmt->close();
     }
 }
+
 
 // get all pin data for map display
 $pinreport_sql = "SELECT r.latitude, r.longitude, r.report_title, r.report_type, r.report_status,
@@ -125,7 +211,7 @@ $pinreports_json = json_encode($allPins);
             background: rgba(0, 0, 0, 0.5);
             justify-content: center;
             align-items: center;
-            
+
         }
 
         .reportformvillager {
@@ -189,7 +275,7 @@ $pinreports_json = json_encode($allPins);
             background: rgba(0, 0, 0, 0.5);
             justify-content: center;
             align-items: center;
-            
+
         }
 
         .modal-content {
@@ -201,8 +287,73 @@ $pinreports_json = json_encode($allPins);
             position: relative;
         }
 
-        
-        
+        /* pop message*/
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .modal-box {
+            background: #fff;
+            padding: 25px 30px;
+            border-radius: 10px;
+            text-align: center;
+            width: 320px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+            animation: popIn 0.3s ease;
+        }
+
+        .modal-box.success {
+            border-top: 6px solid #28a745;
+        }
+
+        .modal-box.error {
+            border-top: 6px solid #dc3545;
+        }
+
+        .modal-icon {
+            font-size: 45px;
+            margin-bottom: 10px;
+        }
+
+        .modal-box.success .modal-icon {
+            color: #28a745;
+        }
+
+        .modal-box.error .modal-icon {
+            color: #dc3545;
+        }
+
+        .modal-box p {
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+
+        .modal-box button {
+            padding: 8px 25px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            background: #333;
+            color: white;
+        }
+
+        @keyframes popIn {
+            from {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
     </style>
 </head>
 
@@ -216,7 +367,6 @@ $pinreports_json = json_encode($allPins);
                 <li><a href="villager_report_list.php"><i class="fa fa-flag"></i> Submit Report,Emergency / Complaint</a></li>
                 <li><a href="villager_announce_list.php"><i class="fa fa-bell"></i> Announcement / Alerts</a></li>
 
-                <li><a href="#"><i class="fa-solid fa-triangle-exclamation"></i> SOS</a></li>
                 <li>
                     <a href="javascript:void(0)" onclick="openFullMap()">
                         <i class="fa-solid fa-map-location-dot"></i> Incident Map
@@ -231,163 +381,165 @@ $pinreports_json = json_encode($allPins);
         <div class="main">
             <!-- Header -->
             <div class="header">
-                <h1>Welcome, <?php echo $username, $villager_id, $role; ?></h1>
+                <h1>Welcome, <?php echo htmlspecialchars($username); ?> from <?php echo htmlspecialchars($kampung_id); ?> <?php echo htmlspecialchars($kampung_name); ?></h1>
+
+
+                <!-- Dashboard content -->
+                <div class="content">
+                    <!-- Submit report -->
+                    <div class="card">
+                        <h3>Submit Emergency/Complaint</h3>
+                        <p>Report any incidents or complaints here.</p>
+                        <button class="btn" onclick="openForm()">Submit Report</button></a>
+
+                    </div>
+
+                    <!-- Alerts / Notifications -->
+                    <div class="card">
+                        <h3>Announcement / Alerts</h3>
+                        <p>Receive system alerts and announcement .</p>
+                        <a href="villager_announce_list.php"><button>View Alerts</button></a>
+                    </div>
+
+
+                    <!-- SOS / Quick Emergency -->
+                    <div class="card sos-card">
+                        <h3>SOS / Quick Emergency</h3>
+                        <p>Send a quick SOS alert to authorities.</p>
+                        <button class="sos-button" onclick="openSOSForm()">Send SOS</button>
+                    </div>
+
+                    <!-- Map placeholder -->
+                    <div class="card">
+                        <h3>Incident Map</h3>
+                        <p>View location of incidents on the map.</p>
+                        <div id="incident-map" class="map-placeholder" onclick="openFullMap()"></div>
+                    </div>
+
+                </div>
             </div>
 
-            <!-- Dashboard content -->
-            <div class="content">
-                <!-- Submit report -->
-                <div class="card">
-                    <h3>Submit Emergency/Complaint</h3>
-                    <p>Report any incidents or complaints here.</p>
-                    <button class="btn" onclick="openForm()">Submit Report</button></a>
+            <!-- reportform -->
+            <div id="reportform">
+                <form action="" method="POST" class="reportformvillager">
 
-                </div>
+                    <div class="form-card">
+                        <span class="close" onclick="closeForm()">&times;</span>
+                        <h2>Submit Report</h2>
 
-                <!-- Alerts / Notifications -->
-                <div class="card">
-                    <h3>Announcement / Alerts</h3>
-                    <p>Receive system alerts and announcement .</p>
-                    <a href="villager_announce_list.php"><button>View Alerts</button></a>
-                </div>
+                        <input type="hidden" name="latitude" id="latitude">
+                        <input type="hidden" name="longitude" id="longitude">
 
 
-                <!-- SOS / Quick Emergency -->
-                <div class="card sos-card">
-                    <h3>SOS / Quick Emergency</h3>
-                    <p>Send a quick SOS alert to authorities.</p>
-                    <button class="sos-button" onclick="openSOSForm()">Send SOS</button>
-                </div>
+                        <label>Report Title</label>
+                        <input type="text" name="title" required>
 
-                <!-- Map placeholder -->
-                <div class="card">
-                    <h3>Incident Map</h3>
-                    <p>View location of incidents on the map.</p>
-                    <div id="incident-map" class="map-placeholder" onclick="openFullMap()"></div>
-                </div>
+                        <label>Report Type</label>
+                        <select name="report_type">
+                            <option>Road Damage</option>
+                            <option>Flood</option>
+                            <option>Power Failure</option>
+                            <option>Other</option>
+                        </select>
+
+                        <label>Description</label>
+                        <textarea type="text" name="description" rows="4" required></textarea>
+
+                        <label>Phone</label>
+                        <input type="tel"
+                            name="phone"
+                            placeholder="0123456789"
+                            minlength="10"
+                            maxlength="12"
+                            pattern="[0-9]+"
+                            oninput="allowOnlyNumbers(this)"
+                            required>
+
+                        <label>Date</label>
+                        <input type="date" name="date" required>
+
+                        <label>Location</label>
+                        <input type="text" name="location" placeholder="GPS / Address">
+
+                        <label>Map </label>
+                        <button type="button" onclick="openMapPicker('report')">📍 Pick Location on Map</button>
+
+                        <p id="locationText" style="font-size:13px;color:green;"></p>
+
+                        <label>Ketua Kampung</label>
+                        <select name="ketua_kampung" required>
+                            <option value="">Select Ketua Kampung</option>
+
+                            <?php while ($rowketua = mysqli_fetch_assoc($resultketua)): ?>
+                                <option value="<?= htmlspecialchars($rowketua['user_id']) ?>">
+                                    <?= htmlspecialchars($rowketua['user_name']) ?>
+                                </option>
+                            <?php endwhile; ?>
+
+                        </select>
+
+                        <button class="btn" name="submitreport">Submit Report</button>
+                    </div>
+                </form>
+
+
+
+            </div>
+
+            <!-- SOS Modal -->
+            <div id="sosform" class="modal">
+                <form action="" method="POST">
+                    <div class="modal-content">
+                        <input type="hidden" name="sos_latitude" id="sos_latitude">
+                        <input type="hidden" name="sos_longitude" id="sos_longitude">
+
+                        <span class="close" onclick="closeSOSForm()">&times;</span>
+                        <h2 style="color: #fff;">SOS Alert</h2>
+                        <p style="color: white">Are you sure you want to send an SOS alert?
+                            (all ketua will receive the sos)</p>
+
+                        <label>Map </label>
+                        <button type="button" onclick="openMapPicker('sos')">📍 Pick Location on Map</button>
+
+                        <button class="btn" name="sosconfirm">Yes, Send SOS</button>
+                        <button class="btn" onclick="closeSOSForm()">Cancel</button>
+                    </div>
+                </form>
+
                 
+
+            </div>
+
+        </div>
+
+        <!-- Map Modal -->
+        <div id="mapModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:9999;">
+            <div style="background:#fff; width:90%; max-width:600px; height:400px; margin:50px auto; padding:10px;">
+                <h3>Click on map to select location</h3>
+                <div id="map" style="height:300px;"></div>
+                <button onclick="closeMap()">Done</button>
             </div>
         </div>
 
-        <!-- reportform -->
-        <div id="reportform">
-            <form action="" method="POST" class="reportformvillager">
+        <!-- Fullscreen Map Modal -->
+        <div id="fullMapModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:9999;">
+            <div style="position:relative; width:100%; height:100%;">
+                <span style="position:absolute; top:10px; right:20px; font-size:30px; color:white; cursor:pointer; z-index:9000;" onclick="closeFullMap()">&times;</span>
+                <div id="fullIncidentMap" style="width:100%; height:100%;"></div>
+            </div>
+        </div>
 
-                <div class="form-card">
-                    <span class="close" onclick="closeForm()">&times;</span>
-                    <h2>Submit Report</h2>
-
-                    <input type="hidden" name="latitude" id="latitude">
-                    <input type="hidden" name="longitude" id="longitude">
-
-
-                    <label>Report Title</label>
-                    <input type="text" name="title" required>
-
-                    <label>Report Type</label>
-                    <select name="report_type">
-                        <option>Road Damage</option>
-                        <option>Flood</option>
-                        <option>Power Failure</option>
-                        <option>Other</option>
-                    </select>
-
-                    <label>Description</label>
-                    <textarea type="text" name="description" rows="4" required></textarea>
-
-                    <label>Phone</label>
-                    <input type="tel"
-                        name="phone"
-                        placeholder="0123456789"
-                        minlength="10"
-                        maxlength="12"
-                        pattern="[0-9]+"
-                        oninput="allowOnlyNumbers(this)"
-                        required>
-
-                    <label>Date</label>
-                    <input type="date" name="date" required>
-
-                    <label>Location</label>
-                    <input type="text" name="location" placeholder="GPS / Address">
-
-                    <label>Map </label>
-                    <button type="button" onclick="openMapPicker('report')">📍 Pick Location on Map</button>
-
-                    <p id="locationText" style="font-size:13px;color:green;"></p>
-
-                    <label>Ketua Kampung</label>
-                    <select name="ketua_kampung" required>
-                        <option value="">Select Ketua Kampung</option>
-
-                        <?php while ($rowketua = mysqli_fetch_assoc($resultketua)): ?>
-                            <option value="<?= htmlspecialchars($rowketua['user_id']) ?>">
-                                <?= htmlspecialchars($rowketua['user_name']) ?>
-                            </option>
-                        <?php endwhile; ?>
-
-                    </select>
-
-                    <button class="btn" name="submitreport">Submit Report</button>
+        <?php if (!empty($message)): ?>
+            <div class="modal-overlay">
+                <div class="modal-box <?= $status === 'success' ? 'success' : 'error' ?>">
+                    <div class="modal-icon">
+                        <?= $status === 'success' ? '✔' : '❌' ?>
+                    </div>
+                    <p><?= htmlspecialchars($message) ?></p>
+                    <button onclick="closePopup()">OK</button>
                 </div>
-            </form>
-
-            <?php if (isset($_GET['success'])): ?>
-                <script>
-                    alert("Report submitted successfully!");
-                </script>
-            <?php endif; ?>
-
-        </div>
-
-        <!-- SOS Modal -->
-        <div id="sosform" class="modal">
-            <form action="" method="POST">
-                <div class="modal-content">
-                    <input type="hidden" name="sos_latitude" id="sos_latitude">
-                    <input type="hidden" name="sos_longitude" id="sos_longitude">
-
-                    <span class="close" onclick="closeSOSForm()">&times;</span>
-                    <h2 style="color: #fff;">SOS Alert</h2>
-                    <p style="color: white">Are you sure you want to send an SOS alert?
-                        (all ketua will receive the sos)</p>
-
-                    <label>Map </label>
-                    <button type="button" onclick="openMapPicker('sos')">📍 Pick Location on Map</button>
-
-                    <button class="btn" name="sosconfirm">Yes, Send SOS</button>
-                    <button class="btn" onclick="closeSOSForm()">Cancel</button>
-                </div>
-            </form>
-
-            <?php if (isset($_GET['success_sos'])): ?>
-                <script>
-                    alert("Sos submitted successfully!");
-                </script>
-            <?php endif; ?>
-
-        </div>
-
-    </div>
-
-    <!-- Map Modal -->
-    <div id="mapModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:9999;">
-        <div style="background:#fff; width:90%; max-width:600px; height:400px; margin:50px auto; padding:10px;">
-            <h3>Click on map to select location</h3>
-            <div id="map" style="height:300px;"></div>
-            <button onclick="closeMap()">Done</button>
-        </div>
-    </div>
-
-    <!-- Fullscreen Map Modal -->
-    <div id="fullMapModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:9999;">
-        <div style="position:relative; width:100%; height:100%;">
-            <span style="position:absolute; top:10px; right:20px; font-size:30px; color:white; cursor:pointer; z-index:9000;" onclick="closeFullMap()">&times;</span>
-            <div id="fullIncidentMap" style="width:100%; height:100%;"></div>
-        </div>
-    </div>
-
-
+            </div>
+        <?php endif; ?>
 
 </body>
 
@@ -551,6 +703,10 @@ $pinreports_json = json_encode($allPins);
 
     function closeMap() {
         document.getElementById("mapModal").style.display = "none";
+    }
+
+    function closePopup() {
+        document.querySelector('.modal-overlay').style.display = 'none';
     }
 </script>
 

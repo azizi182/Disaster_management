@@ -1,52 +1,75 @@
 <?php
 include 'dbconnect.php';
 session_start();
+
 $status = "";
 $message = "";
 
-// for security
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
-  $email = $_POST['email'] ?? '';
+
+  $email = trim($_POST['email'] ?? '');
   $password = $_POST['password'] ?? '';
-  $hashedPassword = sha1($password);
 
-  $sqllogin = "SELECT * FROM tbl_users WHERE user_email = '$email' AND user_password = '$hashedPassword'";
-  $result = $conn->query($sqllogin);
-
-  if ($result->num_rows > 0) {
-    $userdata = $result->fetch_assoc();
-
-    $_SESSION['user_id'] = $userdata['user_id'];
-    $_SESSION['user_name'] = $userdata['user_name'];
-    $_SESSION['user_email'] = $userdata['user_email'];
-    $_SESSION['user_role'] = $userdata['user_role'];
-
-
-
-    switch ($userdata['user_role']) {
-      case 'villager':
-        header('Location: dashboard/villager/villager_dashboard.php');
-        break;
-      case 'ketuakampung':
-        header('Location: dashboard/ketuakampung/ketuakampung_dashboard.php');
-        break;
-      case 'penghulu':
-        header('Location: dashboard/penghulu/penghulu_dashboard.php');
-        break;
-      case 'pejabatdaerah':
-        header('Location: dashboard/pejabatdaerah/pejabatdaerah_dashboard.php');
-        break;
-      case 'kplbhq':
-        header('Location: dashboard/kplbhq/kplb_dashboard.php');
-        break;
-    }
-    exit();
-  } else {
+  // Basic validation
+  if (!filter_var($email, FILTER_VALIDATE_EMAIL) || empty($password)) {
     $status = "error";
-    $message = "User not found or incorrect password";
+    $message = "Invalid email or password";
+  } else {
+
+    // Prepared statement (SQL Injection safe)
+    $stmt = $conn->prepare(
+      "SELECT * FROM tbl_users WHERE user_email = ?"
+    );
+    $stmt->bind_param("s", $email);
+    $stmt->execute();
+
+    $result = $stmt->get_result();
+
+    if ($result->num_rows === 1) {
+      $userdata = $result->fetch_assoc();
+
+      // ✅ Verify hashed password
+      if (password_verify($password, $userdata['user_password'])) {
+
+        // Set session securely
+        $_SESSION['user_id'] = $userdata['user_id'];
+        $_SESSION['user_name'] = $userdata['user_name'];
+        $_SESSION['user_email'] = $userdata['user_email'];
+        $_SESSION['user_role'] = $userdata['user_role'];
+
+        // Role-based redirect
+        switch ($userdata['user_role']) {
+          case 'villager':
+            header('Location: dashboard/villager/villager_dashboard.php');
+            break;
+          case 'ketuakampung':
+            header('Location: dashboard/ketuakampung/ketuakampung_dashboard.php');
+            break;
+          case 'penghulu':
+            header('Location: dashboard/penghulu/penghulu_dashboard.php');
+            break;
+          case 'pejabatdaerah':
+            header('Location: dashboard/pejabatdaerah/pejabatdaerah_dashboard.php');
+            break;
+          case 'kplbhq':
+            header('Location: dashboard/kplbhq/kplb_dashboard.php');
+            break;
+          default:
+            header('Location: login.php');
+        }
+        exit();
+      } else {
+        $status = "error";
+        $message = "Invalid email or password";
+      }
+    } else {
+      $status = "error";
+      $message = "Invalid email or password";
+    }
   }
 }
 ?>
+
 
 <!DOCTYPE html>
 <html>
@@ -66,9 +89,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
   <nav>
     <a href="#">About Us</a>
     <a href="#">Contact</a>
-    
+
   </nav>
 </header>
+
+<style>
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+  }
+
+  .modal-box {
+    background: #fff;
+    padding: 25px 30px;
+    border-radius: 10px;
+    text-align: center;
+    width: 320px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    animation: popIn 0.3s ease;
+  }
+
+  .modal-box.success {
+    border-top: 6px solid #28a745;
+  }
+
+  .modal-box.error {
+    border-top: 6px solid #dc3545;
+  }
+
+  .modal-icon {
+    font-size: 45px;
+    margin-bottom: 10px;
+  }
+
+  .modal-box.success .modal-icon {
+    color: #28a745;
+  }
+
+  .modal-box.error .modal-icon {
+    color: #dc3545;
+  }
+
+  .modal-box p {
+    font-size: 16px;
+    margin-bottom: 20px;
+  }
+
+  .modal-box button {
+    padding: 8px 25px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    background: #333;
+    color: white;
+  }
+
+  @keyframes popIn {
+    from {
+      transform: scale(0.8);
+      opacity: 0;
+    }
+
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+</style>
 
 <body>
 
@@ -90,15 +182,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
     </form>
 
 
-    <?php
-    if (!empty($message)) {
-      if ($status === "success") {
-        echo '<div class="success">' . htmlspecialchars($message) . '</div>';
-      } else {
-        echo '<div class="error">' . htmlspecialchars($message) . '</div>';
-      }
-    }
-    ?>
+    <?php if (!empty($message)): ?>
+      <div class="modal-overlay">
+        <div class="modal-box <?= $status === 'success' ? 'success' : 'error' ?>">
+          <div class="modal-icon">
+            <?= $status === 'success' ? '✔' : '❌' ?>
+          </div>
+          <p><?= htmlspecialchars($message) ?></p>
+          <button onclick="closeModal()">OK</button>
+        </div>
+      </div>
+    <?php endif; ?>
 
     <div class="link">
       No account? <a href="signup.php">Sign up</a>
@@ -110,17 +204,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
     <div class="memo-slide active">
       <p>Langkah-Langkah Terbakar!</p>
       <img src="assets/langkah terbakar.jpg" alt="Announcement 1">
-      
+
     </div>
     <div class="memo-slide">
       <p>Dilarang membakar sampah dikawasan rumah!</p>
       <img src="assets/membakarsampah.jpg" alt="Announcement 2">
-      
+
     </div>
     <div class="memo-slide">
       <p>Langkah-Langkah Banjir!</p>
       <img src="assets/LANGKAH-KESELAMATAN-DI-MUSIM-BANJIR-2.jpeg" alt="Announcement 3">
-      
+
     </div>
   </div>
 
@@ -143,6 +237,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
 
   showSlide(current);
   setInterval(nextSlide, 3000); // change every 3 seconds
+
+  function closeModal() {
+    document.querySelector('.modal-overlay').style.display = 'none';
+  }
 </script>
 
 
