@@ -11,10 +11,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
   $password = $_POST['password'] ?? '';
 
   // Basic validation
-  if (!filter_var($email, FILTER_VALIDATE_EMAIL) || empty($password)) {
+  if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
     $status = "error";
-    $message = "Invalid email or password";
-  } else {
+    $message = "Invalid email format";
+  }else if (empty($email) || empty($password)) {
+    $status = "error";
+    $message = "Please fill in all fields";
+  }
+   else {
 
     // Prepared statement (SQL Injection safe)
     $stmt = $conn->prepare(

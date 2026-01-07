@@ -52,7 +52,7 @@ if (isset($_POST['submitreport'])) {
     $date = $_POST['date'];
     $location = $_POST['location'];
     $ketua_id = $_POST['ketua_kampung'];
-    $status = 'Pending';
+    $status_report = 'Pending';
     $lat = $_POST['latitude'];
     $lng = $_POST['longitude'];
 
@@ -70,7 +70,7 @@ if (isset($_POST['submitreport'])) {
 
         $status = "error";
         $message = "Please select a Ketua Kampung";
-    } else if (empty($title) || empty($report_type) || empty($description) || empty($date)) {
+    } else if (empty($title) || empty($report_type) || empty($description) || empty($date) || empty($location) || empty($phone)) {
 
         $status = "error";
         $message = "Please fill in all required fields";
@@ -105,7 +105,7 @@ if (isset($_POST['submitreport'])) {
             $location,
             $lat,
             $lng,
-            $status
+            $status_report
         );
 
         if ($stmt->execute()) {
