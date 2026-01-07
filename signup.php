@@ -4,6 +4,12 @@ $message = "";
 $status = "";
 include 'dbconnect.php';
 
+if (isset($_GET['success_signup'])) {
+    $status = "success";
+    $message = "Account created successfully!";
+}
+
+
 // for security
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['signup'])) {
 
@@ -14,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['signup'])) {
     $confirmPassword = $_POST['confirmpassword'] ?? '';
     $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
     $role = $_POST['role'] ?? '';
-    $kampung_id = $_POST['kampung_id'] ?? null;
+    $kampung_ids = $_POST['kampung_id'] ?? [];
 
     // ✅ Server-side validation
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -37,34 +43,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['signup'])) {
         //empty fields
         $status = "error";
         $message = "Please fill in all fields";
-    } elseif (in_array($role, ['villager', 'ketuakampung']) && empty($kampung_id)) {
+    } elseif (in_array($role, ['villager', 'ketuakampung', 'penghulu']) && empty($kampung_ids)) {
         $status = "error";
-        $message = "Please select your kampung";
+        $message = "Please select kampung";
+    } elseif (in_array($role, ['villager', 'ketuakampung']) && count($kampung_ids) > 1) {
+        $status = "error";
+        $message = "Villager or Ketua Kampung can only select 1 kampung";
     } else {
 
 
         // Check email exists (Prepared Statement) - more secure //sql injection
-        $stmt = $conn->prepare("SELECT user_email FROM tbl_users WHERE user_email = ?");
-        $stmt->bind_param("s", $email);
-        $stmt->execute();
-        $stmt->store_result();
 
-        if ($stmt->num_rows > 0) {
+        $checkStmt = $conn->prepare(
+            "SELECT user_id FROM tbl_users WHERE user_email = ?"
+        );
+        $checkStmt->bind_param("s", $email);
+        $checkStmt->execute();
+        $checkStmt->store_result();
+
+        if ($checkStmt->num_rows > 0) {
             $status = "error";
             $message = "Email already exists";
         } else {
 
-            // Insert user
-            $stmt = $conn->prepare(
-                "INSERT INTO tbl_users 
-                (user_name, user_email, user_password, user_role,kampung_id) 
-                VALUES (?, ?, ?, ?,?)"
-            );
-            $stmt->bind_param("ssssi", $username, $email, $hashedPassword, $role, $kampung_id);
+            $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
-            if ($stmt->execute()) {
-                $status = "success";
-                $message = "Account created successfully!";
+            // Insert user
+            $userStmt = $conn->prepare(
+                "INSERT INTO tbl_users (user_name, user_email, user_password, user_role)
+                VALUES (?, ?, ?, ?)"
+            );
+            $userStmt->bind_param("ssss", $username, $email, $hashedPassword, $role);
+
+            if ($userStmt->execute()) {
+
+                $user_id = $userStmt->insert_id;
+
+                // Insert user_kampung
+                $ukStmt = $conn->prepare(
+                    "INSERT INTO user_kampung (user_id, kampung_id) VALUES (?, ?)"
+                );
+
+                foreach ($kampung_ids as $kid) {
+                    $ukStmt->bind_param("ii", $user_id, $kid);
+                    $ukStmt->execute();
+                }
+
+                header("Location: signup.php?success_signup=1");
+                exit();
             } else {
                 $status = "error";
                 $message = "Error creating account";
@@ -72,7 +98,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['signup'])) {
         }
     }
 }
-
 ?>
 
 
@@ -210,12 +235,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['signup'])) {
 
             <div class="input-group" id="kampungDiv" style="display:none;">
                 <label>Kampung</label>
-                <select name="kampung_id">
-                    <option value="">Select Kampung</option>
+                <select name="kampung_id[]" id="kampungSelect" multiple size="4">
                     <option value="1">Kampung Baru</option>
                     <option value="2">Kampung Selamat</option>
                     <option value="3">Kampung Bahagia</option>
+                    <option value="4">Kampung Sejahtera</option>
+                    <option value="5">Kampung Mewah</option>
                 </select>
+                <small>Hold CTRL to select multiple</small>
             </div>
 
             <button type="submit" class="btn" name="signup">Sign Up</button>
@@ -233,12 +260,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['signup'])) {
             </div>
         <?php endif; ?>
 
-        <?php if (isset($_GET['success_signup'])): ?>
-            <script>
-                alert("Sign up submitted successfully!");
-            </script>
-        <?php endif; ?>
-
+        
 
 
 
@@ -251,8 +273,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['signup'])) {
 <script>
     function toggleKampung() {
         const role = document.getElementById("role").value;
-        document.getElementById("kampungDiv").style.display =
-            (role === "villager" || role === "ketuakampung") ? "block" : "none";
+        const kampungDiv = document.getElementById("kampungDiv");
+        const kampungSelect = document.getElementById("kampungSelect");
+
+        if (role === "villager" || role === "ketuakampung") {
+            kampungDiv.style.display = "block";
+            kampungSelect.multiple = false; // only 1 selection allowed
+            kampungSelect.size = 1;
+        } else if (role === "penghulu") {
+            kampungDiv.style.display = "block";
+            kampungSelect.multiple = true; // multiple selection allowed
+            kampungSelect.size = 4;
+        } else {
+            kampungDiv.style.display = "none";
+            kampungSelect.multiple = false;
+            kampungSelect.size = 4;
+        }
     }
 
     function closeModal() {

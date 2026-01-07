@@ -2,39 +2,58 @@
 session_start();
 include '../../dbconnect.php';
 
-if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'villager') {
+if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'pejabatdaerah') {
     header('Location: ../login.php');
     exit();
 }
 
-$villager_id = $_SESSION['user_id'];
+$user_id = $_SESSION['user_id'];
 $username = $_SESSION['user_name'];
+$role = $_SESSION['user_role'];
 
-//get kampung id 
-$kampung_id = '';
-$kampung_name = '';
+//map
+// penghulu reports
+$report_sql = "SELECT r.latitude, r.longitude, r.report_title, r.report_type, r.report_status,
+                u.user_name AS submitted_by
+                FROM villager_report r
+                JOIN tbl_users u ON
+                r.villager_id = u.user_id
+                WHERE r.report_status = 'Pending'";
+$report_result = mysqli_query($conn, $report_sql);
+$reports = [];
+while ($row = mysqli_fetch_assoc($report_result)) {
+    $row['type'] = 'report';
+    $reports[] = $row;
+}
 
-$stmt = $conn->prepare("
-    SELECT uk.kampung_id, k.kampung_name
-    FROM user_kampung uk
-    JOIN tbl_kampung k ON uk.kampung_id = k.kampung_id
-    WHERE uk.user_id = ?
-    LIMIT 1
-");
-$stmt->bind_param("i", $villager_id);
-$stmt->execute();
-$stmt->bind_result($kampung_id, $kampung_name);
-$stmt->fetch();
-$stmt->close();
+// SOS alerts
+// change to penghulu reports?
+$sos_sql = "SELECT s.latitude, s.longitude, s.sos_status, u.user_name AS sent_by
+            FROM sos_villager s
+            JOIN tbl_users u ON s.villager_id = u.user_id
+            WHERE s.sos_status = 'Sent'";
+$sos_result = mysqli_query($conn, $sos_sql);
+$sos = [];
+while ($row = mysqli_fetch_assoc($sos_result)) {
+    $row['type'] = 'sos';
+    $sos[] = $row;
+}
+
+// Combine
+$allPins = array_merge($reports, $sos);
+$pinreports_json = json_encode($allPins);
+
+$username = $_SESSION['user_name'];
 
 // Fetch reports for this villager ONLY
 $sql = "
-    SELECT 
+    SELECT
         vr.*,
-        u.user_name AS ketua_name
+        v.user_name AS villager_name,
+        k.user_name AS ketua_name
     FROM villager_report vr
-    JOIN tbl_users u ON vr.ketua_id = u.user_id
-    WHERE vr.villager_id = '$villager_id'
+    JOIN tbl_users v ON vr.villager_id = v.user_id
+    JOIN tbl_users k ON vr.ketua_id = k.user_id
     ORDER BY vr.report_date ASC
 ";
 
@@ -47,14 +66,10 @@ $result = mysqli_query($conn, $sql);
 
 <head>
     <meta charset="UTF-8">
-    <title>My Reports - villager</title>
-
+    <title> Reports List From Villager</title>
     <link rel="stylesheet" href="../../css/style_villager_dashboard.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
     <style>
         .table-container {
             background: white;
@@ -110,41 +125,41 @@ $result = mysqli_query($conn, $sql);
 
 
         <!-- Sidebar -->
-        <div class="sidebar">
-            <h2>Village - <?php echo $username; ?></h2>
+        <aside class="sidebar">
+            <h2>Pejabat Daerah</h2>
             <ul>
-                <li><a href="villager_dashboard.php"><i class="fa fa-home"></i> Home</a></li>
-                <li><a href="villager_report_list.php"><i class="fa fa-flag"></i> Submit Report,Emergency / Complaint</a></li>
-                <li><a href="villager_announce_list.php"><i class="fa fa-bell"></i> Announcement / Alerts</a></li>
-
-                
-                <li><a href="#"><i class="fa-solid fa-map-location-dot"></i> Incident Map</a></li>
-                <li><a href="../../logout.php"><i class="fa fa-sign-out-alt"></i> Logout</a></li>
+                <li><a href="pejabatdaerah_dashboard.php"><i class="fa fa-home"></i> Home</a></li>
+                <li><a href=""><i class="fa-solid fa-city"></i> Monitor All Villages </a></li>
+                <li><a href="pejabatdaerah_penghulu_report_list.php"><i class="fa-solid fa-file-lines"></i> Reports From Penghulu</a></li>
+                <li><a href="../../logout.php"><i class="fa-solid fa-right-from-bracket"></i> Logout</a></li>
             </ul>
-        </div>
+        </aside>
 
         <!-- Main -->
         <div class="main">
+            <!--header-->
             <div class="header">
-                <h1>My Reports</h1>
+                <h1>Report List From Villager</h1>
                 <p>Logged in as: <?= htmlspecialchars($username) ?></p>
             </div>
 
+            <!--report list table-->
             <div class="table-container">
-                <a href="villager_dashboard.php" class="back-btn">← Back to Dashboard</a>
+                <a href="pejabatdaerah_dashboard.php" class="back-btn">← Back to Dashboard</a>
 
                 <table>
                     <tr>
                         <th>Id</th>
+                        <th>Villager</th>
                         <th>Title</th>
                         <th>Type</th>
                         <th>Description</th>
                         <th>Date</th>
                         <th>Location</th>
-                        <th>View Map</th>
                         <th>Ketua Kampung</th>
                         <th>Status</th>
                         <th>Feedback</th>
+
                     </tr>
 
                     <?php if (mysqli_num_rows($result) > 0): ?>
@@ -153,18 +168,11 @@ $result = mysqli_query($conn, $sql);
                             <tr>
                                 <td><?= $i++ ?></td>
                                 <td><?= htmlspecialchars($row['report_title']) ?></td>
+                                <td><?= htmlspecialchars($row['villager_name']) ?></td>
                                 <td><?= htmlspecialchars($row['report_type']) ?></td>
                                 <td><?= htmlspecialchars($row['report_desc']) ?></td>
                                 <td><?= htmlspecialchars($row['report_date']) ?></td>
                                 <td><?= htmlspecialchars($row['report_location']) ?></td>
-                                <td>
-                                    <button onclick="viewMap(
-                                            '<?= $row['latitude'] ?>', 
-                                            '<?= $row['longitude'] ?>'
-                                            )">
-                                        📍 View Map
-                                    </button>
-                                </td>
                                 <td><?= htmlspecialchars($row['ketua_name']) ?></td>
                                 <td class="status-<?= strtolower($row['report_status']) ?>">
                                     <?= htmlspecialchars($row['report_status']) ?>
@@ -179,6 +187,8 @@ $result = mysqli_query($conn, $sql);
                                     </button>
 
                                 </td>
+
+
                             </tr>
                         <?php endwhile; ?>
                     <?php else: ?>
@@ -216,47 +226,10 @@ $result = mysqli_query($conn, $sql);
         }
     </script>
 
-    <!-- map script -->
-    <div id="mapModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:999; justify-content:center; align-items:center;">
-        <div style="background:#fff; width:90%; max-width:600px; padding:10px; border-radius:8px;">
-            <h3>Incident Location</h3>
-            <div id="viewMap" style="height:350px;"></div>
-            <button onclick="closeMap()">Close</button>
-        </div>
-    </div>
 
 
 </body>
 
-<script>
-    let viewMapObj;
-    let viewMarker;
-
-    function viewMap(lat, lng) {
-        document.getElementById("mapModal").style.display = "flex";
-
-        setTimeout(() => {
-            if (viewMapObj) {
-                viewMapObj.remove();
-            }
-
-            viewMapObj = L.map('viewMap').setView([lat, lng], 15);
-
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap'
-            }).addTo(viewMapObj);
-
-            viewMarker = L.marker([lat, lng]).addTo(viewMapObj)
-                .bindPopup("Incident Location")
-                .openPopup();
-
-        }, 200);
-    }
-
-    function closeMap() {
-        document.getElementById("mapModal").style.display = "none";
-    }
-</script>
 
 
 </html>

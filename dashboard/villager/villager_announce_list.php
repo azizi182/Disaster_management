@@ -10,24 +10,23 @@ if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'villager') {
 $villager_id = $_SESSION['user_id'];
 $username = $_SESSION['user_name'];
 
+
+//get kampung id 
 $kampung_id = '';
 $kampung_name = '';
 
-$stmt = $conn->prepare("SELECT kampung_id FROM tbl_users WHERE user_id = ?");
+$stmt = $conn->prepare("
+    SELECT uk.kampung_id, k.kampung_name
+    FROM user_kampung uk
+    JOIN tbl_kampung k ON uk.kampung_id = k.kampung_id
+    WHERE uk.user_id = ?
+    LIMIT 1
+");
 $stmt->bind_param("i", $villager_id);
 $stmt->execute();
-$stmt->bind_result($kampung_id);
+$stmt->bind_result($kampung_id, $kampung_name);
 $stmt->fetch();
 $stmt->close();
-
-if (!empty($kampung_id)) {
-    $stmt = $conn->prepare("SELECT kampung_name FROM tbl_kampung WHERE kampung_id = ?");
-    $stmt->bind_param("i", $kampung_id);
-    $stmt->execute();
-    $stmt->bind_result($kampung_name);
-    $stmt->fetch();
-    $stmt->close();
-}
 
 function getAnnouncements($conn, $type, $kampung_id)
 {

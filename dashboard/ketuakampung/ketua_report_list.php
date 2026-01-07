@@ -9,25 +9,65 @@ if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'ketuakampung') {
 
 $ketua_id = $_SESSION['user_id'];
 $username = $_SESSION['user_name'];
+$message = "";
+$status = "";
 
-//Get id kampung
+// 2. CHECK FOR SUCCESS URL PARAMETERS (From redirects)
+if (isset($_GET['success']) && $_GET['success'] == 1) {
+    $status = "success";
+    $message = "Report approved and feedback submitted successfully!";
+}
+
+
+//get kampung id 
 $kampung_id = '';
 $kampung_name = '';
 
-$stmt = $conn->prepare("SELECT kampung_id FROM tbl_users WHERE user_id = ?");
+$stmt = $conn->prepare("
+    SELECT uk.kampung_id, k.kampung_name
+    FROM user_kampung uk
+    JOIN tbl_kampung k ON uk.kampung_id = k.kampung_id
+    WHERE uk.user_id = ?
+    LIMIT 1
+");
 $stmt->bind_param("i", $ketua_id);
 $stmt->execute();
-$stmt->bind_result($kampung_id);
+$stmt->bind_result($kampung_id, $kampung_name);
 $stmt->fetch();
 $stmt->close();
 
-if (!empty($kampung_id)) {
-    $stmt = $conn->prepare("SELECT kampung_name FROM tbl_kampung WHERE kampung_id = ?");
-    $stmt->bind_param("i", $kampung_id);
-    $stmt->execute();
-    $stmt->bind_result($kampung_name);
-    $stmt->fetch();
-    $stmt->close();
+// 3. HANDLE FORM SUBMISSION (Approve Report)
+if (isset($_POST['submitreport'])) {
+    $report_id = (int) $_POST['report_id'];
+    $rpt_status = "Approved"; // Fixed status
+    $raw_feedback = $_POST['feedback'];
+
+    // --- VALIDATION LOGIC ---
+    $pattern = "/^[a-zA-Z0-9 ,.-]{3,100}$/";
+
+    if (!preg_match($pattern, $raw_feedback)) {
+        // Validation Failed -> Set Error Modal
+        $status = "error";
+        $message = "Feedback format is invalid.";
+    } else {
+        // Validation Passed -> Update DB
+        $feedback = mysqli_real_escape_string($conn, $raw_feedback);
+
+        $sql = "UPDATE villager_report
+                SET report_status = '$rpt_status',
+                    report_feedback = '$feedback'
+                WHERE report_id = '$report_id'";
+
+        if (mysqli_query($conn, $sql)) {
+            // Success -> Redirect to clear form and show success modal
+            header("Location: ketua_report_list.php?success=1");
+            exit();
+        } else {
+            // DB Error -> Show Error Modal
+            $status = "error";
+            $message = "Database Error: " . mysqli_error($conn);
+        }
+    }
 }
 
 // Fetch reports for this villager ONLY
@@ -60,11 +100,6 @@ $sqlsos =  "SELECT
     ORDER BY s.created_at ASC";
 $resultsos = mysqli_query($conn, $sqlsos);
 $sosList = mysqli_fetch_all($resultsos, MYSQLI_ASSOC);
-
-
-
-
-
 
 ?>
 
@@ -242,7 +277,7 @@ $sosList = mysqli_fetch_all($resultsos, MYSQLI_ASSOC);
                 <li><a href="ketuakampung_dashboard.php"><i class="fa fa-home"></i> Home</a></li>
                 <li><a href="ketua_report_list.php"><i class="fa fa-edit"></i> Monitor Village Reports - Notify Village</a></li>
                 <li><a href="ketua_annoucment_list.php"><i class="fa fa-calendar-plus"></i> Announcement for villagers</a></li>
-                
+
                 <li>
                     <a href="javascript:void(0)" onclick="openFullMap()">
                         <i class="fa-solid fa-map-location-dot"></i> Incident Map
@@ -394,17 +429,33 @@ $sosList = mysqli_fetch_all($resultsos, MYSQLI_ASSOC);
                     <input type="text" id="villager_name" readonly>
 
                     <label>Feedback</label>
-                    <textarea type="text" name="feedback" rows="4" required></textarea>
+                    <textarea type="text" name="feedback" rows="4" required placeholder="Enter feedback (Letters, numbers, commas, dots, dashes only)"></textarea>
 
 
-                    <button class="btn" name="submitreport">Submit Feedback</button>
+                    <button class="btn" name="submitreport">Confirm Approval</button>
                 </div>
             </form>
 
-            <?php if (isset($_GET['success'])): ?>
-                <script>
-                    alert("Report submitted successfully!");
-                </script>
+            <?php if (!empty($message)): ?>
+                <div class="modal-overlay">
+                    <div class="modal-box <?= $status === 'success' ? 'success' : 'error' ?>">
+                        <div class="modal-icon">
+                            <?= $status === 'success' ? '✔' : '❌' ?>
+                        </div>
+                        <p><?= htmlspecialchars($message) ?></p>
+                        <button onclick="closeModal()">OK</button>
+                    </div>
+                </div>
+
+                <?php if ($status === 'success'): ?>
+                    <script>
+                        if (window.history.replaceState) {
+                            const url = new URL(window.location);
+                            url.searchParams.delete('success');
+                            window.history.replaceState(null, '', url);
+                        }
+                    </script>
+                <?php endif; ?>
             <?php endif; ?>
 
         </div>
@@ -456,7 +507,7 @@ $sosList = mysqli_fetch_all($resultsos, MYSQLI_ASSOC);
         });
     </script>
 
-<!-- Fullscreen Map Modal -->
+    <!-- Fullscreen Map Modal -->
     <div id="fullMapModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:9999;">
         <div style="position:relative; width:100%; height:100%;">
             <span style="position:absolute; top:10px; right:20px; font-size:30px; color:white; cursor:pointer; z-index:1000;" onclick="closeFullMap()">&times;</span>

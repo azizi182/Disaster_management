@@ -25,25 +25,23 @@ $role = $_SESSION['user_role'];
 $ketua_id = $_SESSION['user_id'];
 
 
-//Get id kampung
+
+//get kampung id 
 $kampung_id = '';
 $kampung_name = '';
 
-$stmt = $conn->prepare("SELECT kampung_id FROM tbl_users WHERE user_id = ?");
+$stmt = $conn->prepare("
+    SELECT uk.kampung_id, k.kampung_name
+    FROM user_kampung uk
+    JOIN tbl_kampung k ON uk.kampung_id = k.kampung_id
+    WHERE uk.user_id = ?
+    LIMIT 1
+");
 $stmt->bind_param("i", $ketua_id);
 $stmt->execute();
-$stmt->bind_result($kampung_id);
+$stmt->bind_result($kampung_id, $kampung_name);
 $stmt->fetch();
 $stmt->close();
-
-if (!empty($kampung_id)) {
-    $stmt = $conn->prepare("SELECT kampung_name FROM tbl_kampung WHERE kampung_id = ?");
-    $stmt->bind_param("i", $kampung_id);
-    $stmt->execute();
-    $stmt->bind_result($kampung_name);
-    $stmt->fetch();
-    $stmt->close();
-}
 
 // Fetch count of pending reports
 $sql = "SELECT COUNT(*) AS pending_count FROM villager_report
@@ -99,8 +97,17 @@ if (isset($_POST['submitinformation'])) {
     }
 }
 // Fetch Penghulu list for reporting
-$sqlPenghulu = "SELECT user_id, user_name FROM tbl_users WHERE user_role = 'penghulu'";
-$resultPenghulu = mysqli_query($conn, $sqlPenghulu);
+$sqlPenghulu = "
+    SELECT u.user_id, u.user_name
+    FROM tbl_users u
+    JOIN user_kampung uk ON u.user_id = uk.user_id
+    WHERE u.user_role = 'penghulu'
+      AND uk.kampung_id = ?
+";
+$stmt = $conn->prepare($sqlPenghulu);
+$stmt->bind_param("i", $kampung_id);
+$stmt->execute();
+$resultPenghulu = $stmt->get_result();
 
 
 //2. Report to Penghulu
@@ -118,6 +125,16 @@ if (isset($_POST['submit_to_penghulu'])) {
         'Title' => $title,
         'Location' => $location
     ];
+
+    $validation_error = false;
+    foreach ($inputs as $name => $value) {
+        if (!preg_match($pattern, $value)) {
+            $status = "error";
+            $message = "$name format is invalid. Only letters, numbers, spaces, commas, dots, and dashes allowed.";
+            $validation_error = true;
+            break;
+        }
+    }
 
     if (!$validation_error) {
         $sql = "INSERT INTO `ketua_report`(`ketua_id`, `penghulu_id`, `report_title`, `report_desc`, `report_location`, `report_status`) 
@@ -443,7 +460,7 @@ $pinreports_json = json_encode($allPins);
                 </div>
             </form>
 
-            
+
 
         </div>
 
@@ -497,17 +514,17 @@ $pinreports_json = json_encode($allPins);
         </div>
     </div>
     <?php if (!empty($message)): ?>
-            <div class="modal-overlay">
-                <div class="modal-box <?= $status === 'success' ? 'success' : 'error' ?>">
-                    <div class="modal-icon">
-                        <?= $status === 'success' ? '✔' : '❌' ?>
-                    </div>
-                    <p><?= htmlspecialchars($message) ?></p>
-                    <button onclick="closeModal()">OK</button>
+        <div class="modal-overlay">
+            <div class="modal-box <?= $status === 'success' ? 'success' : 'error' ?>">
+                <div class="modal-icon">
+                    <?= $status === 'success' ? '✔' : '❌' ?>
                 </div>
+                <p><?= htmlspecialchars($message) ?></p>
+                <button onclick="closePopup()">OK</button>
             </div>
-            
-            <?php if ($status === 'success'): ?>
+        </div>
+
+        <?php if ($status === 'success'): ?>
             <script>
                 // Optional: Remove the 'success' query param from URL without refreshing so the modal doesn't show again on manual refresh
                 if (window.history.replaceState) {
@@ -517,8 +534,10 @@ $pinreports_json = json_encode($allPins);
                     window.history.replaceState(null, '', url);
                 }
             </script>
-            <?php endif; ?>
+        <?php endif; ?>
     <?php endif; ?>
+
+
 </body>
 
 <script>
@@ -699,6 +718,10 @@ $pinreports_json = json_encode($allPins);
     function closeFullMap() {
         document.getElementById('fullMapModal').style.display = 'none';
         if (window.fullMap) window.fullMap.remove();
+    }
+
+    function closePopup() {
+        document.querySelector('.modal-overlay').style.display = 'none';
     }
 </script>
 

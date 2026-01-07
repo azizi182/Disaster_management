@@ -4,6 +4,16 @@ include '../../dbconnect.php';
 $message = "";
 $status = "";
 
+if (isset($_GET['success_sos'])) {
+    $status = "success";
+    $message = "Sos submitted successfully!";
+}
+
+if (isset($_GET['success_submit'])) {
+    $status = "success";
+    $message = "Report submitted successfully!";
+}
+
 if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'villager') {
     header('Location: ../login.php');
     exit();
@@ -17,26 +27,26 @@ $role = $_SESSION['user_role'];
 $kampung_id = '';
 $kampung_name = '';
 
-$stmt = $conn->prepare("SELECT kampung_id FROM tbl_users WHERE user_id = ?");
+$stmt = $conn->prepare("
+    SELECT uk.kampung_id, k.kampung_name
+    FROM user_kampung uk
+    JOIN tbl_kampung k ON uk.kampung_id = k.kampung_id
+    WHERE uk.user_id = ?
+    LIMIT 1
+");
 $stmt->bind_param("i", $villager_id);
 $stmt->execute();
-$stmt->bind_result($kampung_id);
+$stmt->bind_result($kampung_id, $kampung_name);
 $stmt->fetch();
 $stmt->close();
 
-if (!empty($kampung_id)) {
-    $stmt = $conn->prepare("SELECT kampung_name FROM tbl_kampung WHERE kampung_id = ?");
-    $stmt->bind_param("i", $kampung_id);
-    $stmt->execute();
-    $stmt->bind_result($kampung_name);
-    $stmt->fetch();
-    $stmt->close();
-}
+
 
 // get ketua kampung refer on thier kampung
-$sqlketua = "SELECT user_id, user_name
-            FROM tbl_users
-            WHERE user_role = 'ketuakampung' AND kampung_id = ?";
+$sqlketua = "SELECT u.user_id, u.user_name
+    FROM tbl_users u
+    JOIN user_kampung uk ON u.user_id = uk.user_id
+    WHERE u.user_role = 'ketuakampung' AND uk.kampung_id = ?";
 $stmt = $conn->prepare($sqlketua);
 $stmt->bind_param("i", $kampung_id);
 $stmt->execute();
@@ -109,8 +119,8 @@ if (isset($_POST['submitreport'])) {
         );
 
         if ($stmt->execute()) {
-            $status = "success";
-            $message = "Report submitted successfully!";
+            header("Location: villager_dashboard.php?success_submit=1");
+                exit();
         } else {
             echo "<script>alert('Error submitting report: " . htmlspecialchars($stmt->error) . "');</script>";
         }
@@ -137,12 +147,12 @@ if (isset($_POST['sosconfirm'])) {
         VALUES (?, ?, ?, ?, ?)
     ");
 
-        $empty_ketua = NULL; // if you don’t have ketua selected
+        $empty_ketua = ''; // if you don’t have ketua selected
         $stmt->bind_param("iidds", $villager_id, $empty_ketua, $lat, $lng, $sos_status);
 
         if ($stmt->execute()) {
-            $status = "success";
-            $message = "Sos submitted successfully!";
+            header("Location: villager_dashboard.php?success_sos=1");
+                exit();
         } else {
             echo "<script>alert('Error sending SOS: " . htmlspecialchars($stmt->error) . "');</script>";
         }
@@ -540,6 +550,9 @@ $pinreports_json = json_encode($allPins);
                 </div>
             </div>
         <?php endif; ?>
+    </div>
+
+        
 
 </body>
 
