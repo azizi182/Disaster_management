@@ -263,6 +263,73 @@ $sosList = mysqli_fetch_all($resultsos, MYSQLI_ASSOC);
             /* GAP between map & table */
             border: 2px solid #e5e7eb;
         }
+
+         .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+    }
+
+    .modal-box {
+        background: #fff;
+        padding: 25px 30px;
+        border-radius: 10px;
+        text-align: center;
+        width: 320px;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+        animation: popIn 0.3s ease;
+    }
+
+    .modal-box.success {
+        border-top: 6px solid #28a745;
+    }
+
+    .modal-box.error {
+        border-top: 6px solid #dc3545;
+    }
+
+    .modal-icon {
+        font-size: 45px;
+        margin-bottom: 10px;
+    }
+
+    .modal-box.success .modal-icon {
+        color: #28a745;
+    }
+
+    .modal-box.error .modal-icon {
+        color: #dc3545;
+    }
+
+    .modal-box p {
+        font-size: 16px;
+        margin-bottom: 20px;
+    }
+
+    .modal-box button {
+        padding: 8px 25px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        background: #333;
+        color: white;
+    }
+
+    @keyframes popIn {
+        from {
+            transform: scale(0.8);
+            opacity: 0;
+        }
+
+        to {
+            transform: scale(1);
+            opacity: 1;
+        }
+    }
     </style>
 </head>
 
@@ -413,14 +480,14 @@ $sosList = mysqli_fetch_all($resultsos, MYSQLI_ASSOC);
 
         <!-- reportform -->
         <div id="reportform">
-            <form method="POST" action="approve_report.php" class="reportformketua">
+            <form method="POST" action="" class="reportformketua">
 
                 <div class="form-card">
-                    <span class="close" onclick="closeForm()">&times;</span>
+                    <span class="close" onclick="closeForm()" style="float:right; cursor:pointer; font-size:20px;">&times;</span>
                     <h2>Submit Feedback</h2>
 
                     <input type="hidden" name="report_id" id="report_id">
-                    <input type="hidden" name="report_status" value="Approved">
+                    
 
                     <label>Report Title</label>
                     <input type="text" id="report_title" readonly>
@@ -532,6 +599,7 @@ $sosList = mysqli_fetch_all($resultsos, MYSQLI_ASSOC);
         reportform.style.display = "none";
     }
 
+    function closeModal() { document.querySelector('.modal-overlay').style.display = 'none'; }
 
     function deleteReport(reportId) {
         if (confirm("Are you sure you want to delete this report?")) {
